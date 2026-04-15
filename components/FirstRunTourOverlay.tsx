@@ -52,7 +52,7 @@ export function FirstRunTourOverlay() {
   } else if (step === 3 && onGameDetail) {
     title = 'Paso 4: Portadas';
     body =
-      'Pulsa «Actualizar portadas». CoverLens buscará imagen en varias fuentes (GameplayStores no requiere clave; otras sí ayudan).';
+      'Pulsa «Actualizar portadas». CoverLens prueba primero GameplayStores y, si activas más fuentes, mejora cobertura para ediciones o carátulas alternativas.';
   } else {
     return null;
   }

@@ -29,6 +29,7 @@ import {
 import { getApiCredentials } from '../../services/credentialsStore';
 import { uniqueCanonicalPlatforms } from '../../services/utils/platformTokens';
 import { pickGridCoverDisplayUri } from '../../services/storage/coverThumbUrls';
+import { subscribeCatalogRefresh } from '../../services/catalogRefreshBus';
 import { formatMoneyMinor } from '../../services/utils/moneyFormat';
 
 const SORT_OPTIONS: { key: CatalogSort; label: string }[] = [
@@ -115,6 +116,8 @@ export default function HomeScreen() {
     const data = await getGames();
     setGames(data);
   }, []);
+
+  React.useEffect(() => subscribeCatalogRefresh(() => void loadGames()), [loadGames]);
 
   useFocusEffect(
     React.useCallback(() => {

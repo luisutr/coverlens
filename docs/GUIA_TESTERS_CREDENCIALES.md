@@ -6,11 +6,24 @@ CoverLens guarda tu catálogo **en el móvil**. Los **metadatos base** (título,
 
 Si **no configuras** IGDB, SteamGridDB, ScreenScraper, etc.:
 
-- Puedes **añadir juegos** (escáner, título manual, import CSV/JSON) y obtener título/plataforma desde GameplayStores cuando el listado lo tenga.
+- Puedes **añadir juegos** (barcode, manual, import CSV/JSON y lote IA por pegado) y obtener título/plataforma desde GameplayStores cuando el listado lo tenga.
 - Las **portadas** siguen la cadena de Ajustes (GameplayStores, SteamGridDB…); puede haber más huecos sin SteamGridDB/IGDB.
 - **IGDB** completa mucho la parte de texto y cabeceras; sin él las fichas suelen quedar «parciales» hasta que haya portada + un dato extra (p. ej. edición desde GPS).
 
 **No es un fallo de la beta**: es el diseño (local-first + APIs opcionales).
+
+---
+
+## Lote IA sin credenciales en app (recomendado en esta versión)
+
+En `Escáner -> Lote IA` el flujo recomendado es:
+
+1. Haz o elige una foto de estantería.
+2. Abre Gemini app/web desde la propia pantalla.
+3. Pide salida en JSON (`{"games":[{"title":"...","platform":"..."}]}`).
+4. Pega la respuesta en CoverLens y pulsa **Procesar lote pegado**.
+
+Esto evita depender de facturación o cuotas cloud dentro de la app. Las APIs siguen siendo opcionales para enriquecer metadatos/portadas/valor.
 
 ---
 

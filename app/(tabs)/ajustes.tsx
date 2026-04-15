@@ -65,6 +65,7 @@ import {
   saveValueSourcePreferences,
   type ValueSourcePreferences,
 } from '../../services/valueSourcePreferences';
+import { formatMoneyMinor } from '../../services/utils/moneyFormat';
 import { deriveMetadataStatusFromGameFields } from '../../services/utils/metadataCompleteness';
 import { resolveMetadata } from '../../services/metadataResolver';
 import { parseCatalogImport } from '../../services/import/catalogImport';
@@ -82,6 +83,55 @@ const IMPORT_HELP_INVALID_FILE =
   '• JSON generado con «Exportar catálogo» en esta app (copia de seguridad o cambio de móvil).\n\n' +
   '• CSV creado en Playnite con la extensión «Library Exporter Advanced». En el CSV deben existir las columnas «Nombre» y «Plataformas» (el resto de columnas es opcional; no hace falta exportar todos los campos de Playnite).\n\n' +
   'No sirve el backup .zip de Playnite ni hojas de cálculo al azar. Si importaste CSV desde Playnite, después usa «Reintentar metadatos» para completar fichas según el orden de fuentes en Catálogo (GameplayStores, IGDB, etc.).';
+
+type CatalogValuePlatformTotals = {
+  platform: string;
+  gameCount: number;
+  totalsByCurrency: Record<string, number>;
+};
+
+type CatalogValueSummary = {
+  pricedGames: number;
+  totalsByCurrency: Record<string, number>;
+  platformTotals: CatalogValuePlatformTotals[];
+};
+
+const EMPTY_CATALOG_VALUE_SUMMARY: CatalogValueSummary = {
+  pricedGames: 0,
+  totalsByCurrency: {},
+  platformTotals: [],
+};
+
+function buildCatalogValueSummary(games: GameRecord[]): CatalogValueSummary {
+  const totalsByCurrency: Record<string, number> = {};
+  const platformMap = new Map<string, CatalogValuePlatformTotals>();
+  let pricedGames = 0;
+
+  for (const game of games) {
+    const cents = game.valueCents;
+    const currency = (game.valueCurrency ?? '').trim().toUpperCase();
+    if (cents == null || !currency) continue;
+    pricedGames++;
+    totalsByCurrency[currency] = (totalsByCurrency[currency] ?? 0) + cents;
+
+    const platform = game.platform?.trim() || 'Plataforma desconocida';
+    const current =
+      platformMap.get(platform) ??
+      {
+        platform,
+        gameCount: 0,
+        totalsByCurrency: {},
+      };
+    current.gameCount += 1;
+    current.totalsByCurrency[currency] = (current.totalsByCurrency[currency] ?? 0) + cents;
+    platformMap.set(platform, current);
+  }
+
+  const platformTotals = Array.from(platformMap.values()).sort((a, b) =>
+    a.platform.localeCompare(b.platform, 'es', { sensitivity: 'base' })
+  );
+  return { pricedGames, totalsByCurrency, platformTotals };
+}
 
 // ─── Componentes auxiliares ───────────────────────────────────────────────────
 
@@ -157,6 +207,8 @@ export default function AjustesScreen() {
     steamGridDbApiKey: '',
     igdbClientId: '',
     igdbClientSecret: '',
+    ocrSpaceApiKey: '',
+    geminiApiKey: '',
     priceChartingToken: '',
     ebayClientId: '',
     ebayClientSecret: '',
@@ -173,8 +225,15 @@ export default function AjustesScreen() {
   const [importRunning, setImportRunning] = React.useState(false);
   const [importProgress, setImportProgress] = React.useState('');
   const [catalogGuideOpen, setCatalogGuideOpen] = React.useState(false);
+  const [catalogValueOpen, setCatalogValueOpen] = React.useState(false);
+  const [coverSourcesOpen, setCoverSourcesOpen] = React.useState(false);
+  const [metadataSourcesOpen, setMetadataSourcesOpen] = React.useState(false);
+  const [valueSourcesOpen, setValueSourcesOpen] = React.useState(false);
   const [apisMetadataOpen, setApisMetadataOpen] = React.useState(false);
   const [gameCount, setGameCount] = React.useState(0);
+  const [catalogValueSummary, setCatalogValueSummary] = React.useState<CatalogValueSummary>(
+    EMPTY_CATALOG_VALUE_SUMMARY
+  );
   const [coverPrefs, setCoverPrefs] = React.useState<CoverSourcePreferences>(() => ({
     order: [...DEFAULT_COVER_SOURCE_PREFERENCES.order],
     enabled: { ...DEFAULT_COVER_SOURCE_PREFERENCES.enabled },
@@ -203,16 +262,35 @@ export default function AjustesScreen() {
     await saveMetadataSourcePreferences(next);
   }, []);
 
+  const refreshCatalogSnapshot = React.useCallback(async () => {
+    await initDatabase();
+    const games = await getGames();
+    setGameCount(games.length);
+    setCatalogValueSummary(buildCatalogValueSummary(games));
+  }, []);
+
   React.useEffect(() => {
     getApiCredentials().then(setForm).catch(() => {});
-    initDatabase()
-      .then(() => getGames())
-      .then((gs) => setGameCount(gs.length))
-      .catch(() => {});
+    refreshCatalogSnapshot().catch(() => {});
     loadCoverSourcePreferences().then(setCoverPrefs).catch(() => {});
     loadMetadataSourcePreferences().then(setMetadataPrefs).catch(() => {});
     loadValueSourcePreferences().then(setValuePrefs).catch(() => {});
-  }, []);
+  }, [refreshCatalogSnapshot]);
+
+  const totalValueEntries = React.useMemo(
+    () =>
+      Object.entries(catalogValueSummary.totalsByCurrency).sort(([a], [b]) =>
+        a.localeCompare(b, 'es', { sensitivity: 'base' })
+      ),
+    [catalogValueSummary.totalsByCurrency]
+  );
+
+  const totalValueHint = React.useMemo(() => {
+    if (totalValueEntries.length === 0) return 'Sin valoraciones guardadas aún';
+    return totalValueEntries
+      .map(([currency, cents]) => formatMoneyMinor(cents, currency) ?? `${(cents / 100).toFixed(2)} ${currency}`)
+      .join(' · ');
+  }, [totalValueEntries]);
 
   // ── Catálogo ────────────────────────────────────────────────────────────────
 
@@ -291,13 +369,13 @@ export default function AjustesScreen() {
             } finally {
               setRetryRunning(false);
               setRetryProgress('');
-              getGames().then((gs) => setGameCount(gs.length)).catch(() => {});
+              refreshCatalogSnapshot().catch(() => {});
             }
           },
         },
       ]
     );
-  }, []);
+  }, [refreshCatalogSnapshot]);
 
   const COVER_BATCH_DELAY_MS = 120;
 
@@ -394,18 +472,20 @@ export default function AjustesScreen() {
           text: 'Limpiar',
           style: 'destructive',
           onPress: () => {
-            removeDuplicatedBarcodes()
-              .then(() => getGames())
-              .then((gs) => {
-                setGameCount(gs.length);
+            void (async () => {
+              try {
+                await removeDuplicatedBarcodes();
+                await refreshCatalogSnapshot();
                 Alert.alert('Hecho', 'Duplicados eliminados.');
-              })
-              .catch(() => Alert.alert('Error', 'No se pudieron eliminar duplicados.'));
+              } catch {
+                Alert.alert('Error', 'No se pudieron eliminar duplicados.');
+              }
+            })();
           },
         },
       ]
     );
-  }, []);
+  }, [refreshCatalogSnapshot]);
 
   const onExport = React.useCallback(async () => {
     try {
@@ -484,8 +564,7 @@ export default function AjustesScreen() {
                     for (const t of res.newThumbnails) {
                       enqueueCoverThumbCache(t.id, t.coverUrl);
                     }
-                    const gs = await getGames();
-                    setGameCount(gs.length);
+                    await refreshCatalogSnapshot();
                     Alert.alert(
                       'Importación terminada',
                       `Importados: ${res.imported}\nOmitidos (duplicado): ${res.skippedDuplicates}\nFilas inválidas: ${res.skippedInvalid}`
@@ -513,7 +592,7 @@ export default function AjustesScreen() {
         );
       }
     })();
-  }, []);
+  }, [refreshCatalogSnapshot]);
 
   // ── APIs ────────────────────────────────────────────────────────────────────
 
@@ -554,6 +633,7 @@ export default function AjustesScreen() {
                         await initDatabase();
                         const n = await deleteAllGames();
                         setGameCount(0);
+                        setCatalogValueSummary(EMPTY_CATALOG_VALUE_SUMMARY);
                         Alert.alert('Hecho', n > 0 ? `Se eliminaron ${n} juego(s).` : 'El catálogo ya estaba vacío.');
                       } catch {
                         Alert.alert('Error', 'No se pudo vaciar el catálogo.');
@@ -586,6 +666,8 @@ export default function AjustesScreen() {
             steamGridDbApiKey: '',
             igdbClientId: '',
             igdbClientSecret: '',
+            ocrSpaceApiKey: '',
+            geminiApiKey: '',
             priceChartingToken: '',
             ebayClientId: '',
             ebayClientSecret: '',
@@ -799,171 +881,268 @@ export default function AjustesScreen() {
         <View style={styles.divider} />
 
         <View style={styles.coverPrefSection}>
-          <Text style={styles.coverPrefSectionTitle}>Orden de fuentes (portadas)</Text>
-          <Text style={styles.coverPrefSectionHint}>
-            Misma cadena que «Actualizar portadas» en la ficha y «Descargar portadas en lote». Arriba se prueba antes;
-            desactiva fuentes que no quieras usar.
-          </Text>
-          {coverPrefs.order.map((id, index) => (
-            <View key={id} style={styles.coverPrefRow}>
-              <View style={{ flex: 1, marginRight: 8 }}>
-                <Text style={styles.coverPrefLabel}>{COVER_PROVIDER_LABELS[id]}</Text>
-              </View>
-              <View style={styles.coverPrefControls}>
-                <TouchableOpacity
-                  onPress={() => void persistCoverPrefs(moveCoverProvider(coverPrefs, id, 'up'))}
-                  disabled={index === 0}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Subir ${COVER_PROVIDER_LABELS[id]}`}
-                >
-                  <Ionicons
-                    name="chevron-up"
-                    size={22}
-                    color={index === 0 ? '#333' : theme.colors.primary}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => void persistCoverPrefs(moveCoverProvider(coverPrefs, id, 'down'))}
-                  disabled={index === coverPrefs.order.length - 1}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Bajar ${COVER_PROVIDER_LABELS[id]}`}
-                >
-                  <Ionicons
-                    name="chevron-down"
-                    size={22}
-                    color={index === coverPrefs.order.length - 1 ? '#333' : theme.colors.primary}
-                  />
-                </TouchableOpacity>
-                <Switch
-                  value={coverPrefs.enabled[id]}
-                  onValueChange={(v) =>
-                    void persistCoverPrefs({
-                      ...coverPrefs,
-                      enabled: { ...coverPrefs.enabled, [id]: v },
-                    })
-                  }
-                  trackColor={{ false: '#333', true: 'rgba(0,127,255,0.35)' }}
-                  thumbColor={coverPrefs.enabled[id] ? theme.colors.primary : '#888'}
-                  accessibilityLabel={`Fuente ${COVER_PROVIDER_LABELS[id]}`}
-                />
-              </View>
+          <Pressable
+            style={styles.sourcePrefsToggle}
+            onPress={() => setCatalogValueOpen((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={catalogValueOpen ? 'Ocultar valor total del catálogo' : 'Mostrar valor total del catálogo'}
+          >
+            <Ionicons name={catalogValueOpen ? 'chevron-down' : 'chevron-forward'} size={18} color={theme.colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.coverPrefSectionTitle}>Valor total del catálogo</Text>
+              <Text style={styles.coverPrefSectionHint}>
+                {totalValueHint} · {catalogValueSummary.pricedGames} juego
+                {catalogValueSummary.pricedGames !== 1 ? 's' : ''} con valoración
+              </Text>
             </View>
-          ))}
+          </Pressable>
+          {catalogValueOpen ? (
+            <View style={styles.sourcePrefsContent}>
+              {totalValueEntries.length === 0 ? (
+                <Text style={styles.catalogValueEmpty}>
+                  Aún no hay valores guardados. Usa «Actualizar valor» en las fichas para completar precios.
+                </Text>
+              ) : (
+                <>
+                  <Text style={styles.catalogValueHeading}>Total</Text>
+                  {totalValueEntries.map(([currency, cents]) => (
+                    <View key={`total-${currency}`} style={styles.catalogValueRow}>
+                      <Text style={styles.catalogValueLabel}>{currency}</Text>
+                      <Text style={styles.catalogValueAmount}>
+                        {formatMoneyMinor(cents, currency) ?? `${(cents / 100).toFixed(2)} ${currency}`}
+                      </Text>
+                    </View>
+                  ))}
+                  <Text style={styles.catalogValueHeading}>Subtotal por plataforma</Text>
+                  {catalogValueSummary.platformTotals.map((row) => {
+                    const rowLabel = Object.entries(row.totalsByCurrency)
+                      .sort(([a], [b]) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
+                      .map(
+                        ([currency, cents]) =>
+                          formatMoneyMinor(cents, currency) ?? `${(cents / 100).toFixed(2)} ${currency}`
+                      )
+                      .join(' · ');
+                    return (
+                      <View key={`platform-${row.platform}`} style={styles.catalogValueRow}>
+                        <Text style={styles.catalogValueLabel}>
+                          {row.platform} ({row.gameCount})
+                        </Text>
+                        <Text style={styles.catalogValueAmount}>{rowLabel}</Text>
+                      </View>
+                    );
+                  })}
+                </>
+              )}
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.coverPrefSection}>
-          <Text style={styles.coverPrefSectionTitle}>Orden de fuentes (metadatos de ficha)</Text>
-          <Text style={styles.coverPrefSectionHint}>
-            Escáner, búsqueda manual y «Completar metadatos» prueban cada fuente activa en este orden. Las primeras tienen
-            prioridad si hay conflicto (p. ej. título y plataforma); las siguientes solo rellenan datos que falten.
-            GameplayStores no requiere clave. IGDB y ScreenScraper son opcionales: puedes desactivarlos si no quieres
-            usarlos o no tienes credenciales.
-          </Text>
-          {metadataPrefs.order.map((id, index) => (
-            <View key={id} style={styles.coverPrefRow}>
-              <View style={{ flex: 1, marginRight: 8 }}>
-                <Text style={styles.coverPrefLabel}>{METADATA_PROVIDER_LABELS[id]}</Text>
-              </View>
-              <View style={styles.coverPrefControls}>
-                <TouchableOpacity
-                  onPress={() => void persistMetadataPrefs(moveMetadataProvider(metadataPrefs, id, 'up'))}
-                  disabled={index === 0}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Subir ${METADATA_PROVIDER_LABELS[id]}`}
-                >
-                  <Ionicons
-                    name="chevron-up"
-                    size={22}
-                    color={index === 0 ? '#333' : theme.colors.primary}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => void persistMetadataPrefs(moveMetadataProvider(metadataPrefs, id, 'down'))}
-                  disabled={index === metadataPrefs.order.length - 1}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Bajar ${METADATA_PROVIDER_LABELS[id]}`}
-                >
-                  <Ionicons
-                    name="chevron-down"
-                    size={22}
-                    color={index === metadataPrefs.order.length - 1 ? '#333' : theme.colors.primary}
-                  />
-                </TouchableOpacity>
-                <Switch
-                  value={metadataPrefs.enabled[id]}
-                  onValueChange={(v) =>
-                    void persistMetadataPrefs({
-                      ...metadataPrefs,
-                      enabled: { ...metadataPrefs.enabled, [id]: v },
-                    })
-                  }
-                  trackColor={{ false: '#333', true: 'rgba(0,127,255,0.35)' }}
-                  thumbColor={metadataPrefs.enabled[id] ? theme.colors.primary : '#888'}
-                  accessibilityLabel={`Metadatos: ${METADATA_PROVIDER_LABELS[id]}`}
-                />
-              </View>
+          <Pressable
+            style={styles.sourcePrefsToggle}
+            onPress={() => setCoverSourcesOpen((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={coverSourcesOpen ? 'Ocultar fuentes de portadas' : 'Mostrar fuentes de portadas'}
+          >
+            <Ionicons name={coverSourcesOpen ? 'chevron-down' : 'chevron-forward'} size={18} color={theme.colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.coverPrefSectionTitle}>Fuentes de portadas</Text>
+              <Text style={styles.coverPrefSectionHint}>
+                Ordena y activa fuentes para «Actualizar portadas» y «Descargar portadas en lote».
+              </Text>
             </View>
-          ))}
+          </Pressable>
+          {coverSourcesOpen ? (
+            <View style={styles.sourcePrefsContent}>
+              {coverPrefs.order.map((id, index) => (
+                <View key={id} style={styles.coverPrefRow}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={styles.coverPrefLabel}>{COVER_PROVIDER_LABELS[id]}</Text>
+                  </View>
+                  <View style={styles.coverPrefControls}>
+                    <TouchableOpacity
+                      onPress={() => void persistCoverPrefs(moveCoverProvider(coverPrefs, id, 'up'))}
+                      disabled={index === 0}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Subir ${COVER_PROVIDER_LABELS[id]}`}
+                    >
+                      <Ionicons
+                        name="chevron-up"
+                        size={22}
+                        color={index === 0 ? '#333' : theme.colors.primary}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => void persistCoverPrefs(moveCoverProvider(coverPrefs, id, 'down'))}
+                      disabled={index === coverPrefs.order.length - 1}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Bajar ${COVER_PROVIDER_LABELS[id]}`}
+                    >
+                      <Ionicons
+                        name="chevron-down"
+                        size={22}
+                        color={index === coverPrefs.order.length - 1 ? '#333' : theme.colors.primary}
+                      />
+                    </TouchableOpacity>
+                    <Switch
+                      value={coverPrefs.enabled[id]}
+                      onValueChange={(v) =>
+                        void persistCoverPrefs({
+                          ...coverPrefs,
+                          enabled: { ...coverPrefs.enabled, [id]: v },
+                        })
+                      }
+                      trackColor={{ false: '#333', true: 'rgba(0,127,255,0.35)' }}
+                      thumbColor={coverPrefs.enabled[id] ? theme.colors.primary : '#888'}
+                      accessibilityLabel={`Fuente ${COVER_PROVIDER_LABELS[id]}`}
+                    />
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.coverPrefSection}>
-          <Text style={styles.coverPrefSectionTitle}>Orden de fuentes (valor en ficha)</Text>
-          <Text style={styles.coverPrefSectionHint}>
-            «Actualizar valor» en la ficha del juego prueba cada fuente activa en este orden. GameplayStores no requiere
-            clave (precio en tienda, EUR). PriceCharting y eBay usan las credenciales de abajo si están activas y
-            configuradas.
-          </Text>
-          {valuePrefs.order.map((id, index) => (
-            <View key={id} style={styles.coverPrefRow}>
-              <View style={{ flex: 1, marginRight: 8 }}>
-                <Text style={styles.coverPrefLabel}>{VALUE_PROVIDER_LABELS[id]}</Text>
-              </View>
-              <View style={styles.coverPrefControls}>
-                <TouchableOpacity
-                  onPress={() => void persistValuePrefs(moveValueProvider(valuePrefs, id, 'up'))}
-                  disabled={index === 0}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Subir ${VALUE_PROVIDER_LABELS[id]}`}
-                >
-                  <Ionicons
-                    name="chevron-up"
-                    size={22}
-                    color={index === 0 ? '#333' : theme.colors.primary}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => void persistValuePrefs(moveValueProvider(valuePrefs, id, 'down'))}
-                  disabled={index === valuePrefs.order.length - 1}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Bajar ${VALUE_PROVIDER_LABELS[id]}`}
-                >
-                  <Ionicons
-                    name="chevron-down"
-                    size={22}
-                    color={index === valuePrefs.order.length - 1 ? '#333' : theme.colors.primary}
-                  />
-                </TouchableOpacity>
-                <Switch
-                  value={valuePrefs.enabled[id]}
-                  onValueChange={(v) =>
-                    void persistValuePrefs({
-                      ...valuePrefs,
-                      enabled: { ...valuePrefs.enabled, [id]: v },
-                    })
-                  }
-                  trackColor={{ false: '#333', true: 'rgba(0,127,255,0.35)' }}
-                  thumbColor={valuePrefs.enabled[id] ? theme.colors.primary : '#888'}
-                  accessibilityLabel={`Fuente valor ${VALUE_PROVIDER_LABELS[id]}`}
-                />
-              </View>
+          <Pressable
+            style={styles.sourcePrefsToggle}
+            onPress={() => setMetadataSourcesOpen((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={metadataSourcesOpen ? 'Ocultar fuentes de metadatos' : 'Mostrar fuentes de metadatos'}
+          >
+            <Ionicons
+              name={metadataSourcesOpen ? 'chevron-down' : 'chevron-forward'}
+              size={18}
+              color={theme.colors.primary}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.coverPrefSectionTitle}>Fuentes de metadatos</Text>
+              <Text style={styles.coverPrefSectionHint}>
+                GameplayStores va primero por defecto; IGDB y ScreenScraper completan datos cuando los activas.
+              </Text>
             </View>
-          ))}
+          </Pressable>
+          {metadataSourcesOpen ? (
+            <View style={styles.sourcePrefsContent}>
+              {metadataPrefs.order.map((id, index) => (
+                <View key={id} style={styles.coverPrefRow}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={styles.coverPrefLabel}>{METADATA_PROVIDER_LABELS[id]}</Text>
+                  </View>
+                  <View style={styles.coverPrefControls}>
+                    <TouchableOpacity
+                      onPress={() => void persistMetadataPrefs(moveMetadataProvider(metadataPrefs, id, 'up'))}
+                      disabled={index === 0}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Subir ${METADATA_PROVIDER_LABELS[id]}`}
+                    >
+                      <Ionicons
+                        name="chevron-up"
+                        size={22}
+                        color={index === 0 ? '#333' : theme.colors.primary}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => void persistMetadataPrefs(moveMetadataProvider(metadataPrefs, id, 'down'))}
+                      disabled={index === metadataPrefs.order.length - 1}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Bajar ${METADATA_PROVIDER_LABELS[id]}`}
+                    >
+                      <Ionicons
+                        name="chevron-down"
+                        size={22}
+                        color={index === metadataPrefs.order.length - 1 ? '#333' : theme.colors.primary}
+                      />
+                    </TouchableOpacity>
+                    <Switch
+                      value={metadataPrefs.enabled[id]}
+                      onValueChange={(v) =>
+                        void persistMetadataPrefs({
+                          ...metadataPrefs,
+                          enabled: { ...metadataPrefs.enabled, [id]: v },
+                        })
+                      }
+                      trackColor={{ false: '#333', true: 'rgba(0,127,255,0.35)' }}
+                      thumbColor={metadataPrefs.enabled[id] ? theme.colors.primary : '#888'}
+                      accessibilityLabel={`Metadatos: ${METADATA_PROVIDER_LABELS[id]}`}
+                    />
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.coverPrefSection}>
+          <Pressable
+            style={styles.sourcePrefsToggle}
+            onPress={() => setValueSourcesOpen((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={valueSourcesOpen ? 'Ocultar fuentes de valor' : 'Mostrar fuentes de valor'}
+          >
+            <Ionicons name={valueSourcesOpen ? 'chevron-down' : 'chevron-forward'} size={18} color={theme.colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.coverPrefSectionTitle}>Fuentes de valor</Text>
+              <Text style={styles.coverPrefSectionHint}>
+                Activa y ordena GameplayStores, PriceCharting y eBay para «Actualizar valor».
+              </Text>
+            </View>
+          </Pressable>
+          {valueSourcesOpen ? (
+            <View style={styles.sourcePrefsContent}>
+              {valuePrefs.order.map((id, index) => (
+                <View key={id} style={styles.coverPrefRow}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={styles.coverPrefLabel}>{VALUE_PROVIDER_LABELS[id]}</Text>
+                  </View>
+                  <View style={styles.coverPrefControls}>
+                    <TouchableOpacity
+                      onPress={() => void persistValuePrefs(moveValueProvider(valuePrefs, id, 'up'))}
+                      disabled={index === 0}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Subir ${VALUE_PROVIDER_LABELS[id]}`}
+                    >
+                      <Ionicons
+                        name="chevron-up"
+                        size={22}
+                        color={index === 0 ? '#333' : theme.colors.primary}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => void persistValuePrefs(moveValueProvider(valuePrefs, id, 'down'))}
+                      disabled={index === valuePrefs.order.length - 1}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Bajar ${VALUE_PROVIDER_LABELS[id]}`}
+                    >
+                      <Ionicons
+                        name="chevron-down"
+                        size={22}
+                        color={index === valuePrefs.order.length - 1 ? '#333' : theme.colors.primary}
+                      />
+                    </TouchableOpacity>
+                    <Switch
+                      value={valuePrefs.enabled[id]}
+                      onValueChange={(v) =>
+                        void persistValuePrefs({
+                          ...valuePrefs,
+                          enabled: { ...valuePrefs.enabled, [id]: v },
+                        })
+                      }
+                      trackColor={{ false: '#333', true: 'rgba(0,127,255,0.35)' }}
+                      thumbColor={valuePrefs.enabled[id] ? theme.colors.primary : '#888'}
+                      accessibilityLabel={`Fuente valor ${VALUE_PROVIDER_LABELS[id]}`}
+                    />
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
 
         {retryRunning && retryProgress ? (
@@ -1153,6 +1332,45 @@ export default function AjustesScreen() {
           {field('Dev Password (opcional)', 'screenScraperDevPassword', 'dev-password', true)}
           <TouchableOpacity onPress={() => void Linking.openURL(providerLinks.screenScraper)}>
             <Text style={styles.link}>Crear cuenta ScreenScraper →</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* OCR.space */}
+        <View style={styles.subsection}>
+          <View style={styles.subsectionHeader}>
+            <Text style={styles.subsectionTitle}>OCR.space — soporte legacy (opcional)</Text>
+            <View style={styles.badgeOptional}>
+              <Text style={styles.badgeOptionalText}>Opcional</Text>
+            </View>
+          </View>
+          <Text style={styles.sectionHint}>
+            El flujo principal actual no depende de OCR en la nube: CoverLens funciona con barcode y manual sin credenciales.
+            Si mantienes esta clave, queda guardada para compatibilidad/futuras pruebas.
+          </Text>
+          <Text style={styles.sectionHint}>
+            Alta rápida: 1) Abre el enlace. 2) Regístrate gratis. 3) Copia tu API key. 4) Pégala aquí.
+          </Text>
+          {field('OCR.space API key', 'ocrSpaceApiKey', 'apikey de OCR.space', true)}
+          <TouchableOpacity onPress={() => void Linking.openURL(providerLinks.ocrSpace)}>
+            <Text style={styles.link}>Crear API key gratuita en OCR.space →</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Gemini (Google AI Studio) */}
+        <View style={styles.subsection}>
+          <View style={styles.subsectionHeader}>
+            <Text style={styles.subsectionTitle}>Google Gemini — uso externo (opcional)</Text>
+            <View style={styles.badgeOptional}>
+              <Text style={styles.badgeOptionalText}>Opcional</Text>
+            </View>
+          </View>
+          <Text style={styles.sectionHint}>
+            Para lotes recomendamos «Escáner → Lote IA» usando Gemini app/web y pegando el JSON en CoverLens (sin API key
+            en la app). Este campo queda como reserva para pruebas avanzadas.
+          </Text>
+          {field('Gemini API key (AI Studio)', 'geminiApiKey', 'clave de aistudio.google.com/apikey', true)}
+          <TouchableOpacity onPress={() => void Linking.openURL(providerLinks.geminiAiStudio)}>
+            <Text style={styles.link}>Crear API key en Google AI Studio →</Text>
           </TouchableOpacity>
         </View>
 
@@ -1538,6 +1756,14 @@ const styles = StyleSheet.create({
     borderBottomColor: '#1a1a1a',
     backgroundColor: '#080808',
   },
+  sourcePrefsToggle: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  sourcePrefsContent: {
+    marginTop: 8,
+  },
   coverPrefSectionTitle: {
     color: theme.colors.textLight,
     fontWeight: '700',
@@ -1549,6 +1775,39 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
     marginBottom: 10,
+  },
+  catalogValueHeading: {
+    color: theme.colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  catalogValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 7,
+    borderTopWidth: 1,
+    borderTopColor: '#151515',
+    gap: 8,
+  },
+  catalogValueLabel: {
+    flex: 1,
+    color: theme.colors.textLight,
+    fontSize: 12,
+  },
+  catalogValueAmount: {
+    color: '#9cd0ff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  catalogValueEmpty: {
+    color: theme.colors.textDim,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 2,
+    marginBottom: 4,
   },
   coverPrefRow: {
     flexDirection: 'row',

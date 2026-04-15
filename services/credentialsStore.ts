@@ -10,6 +10,10 @@ export type ApiCredentials = {
   steamGridDbApiKey: string;
   igdbClientId: string;
   igdbClientSecret: string;
+  /** OCR.space API key para modo «Portada OCR» sin módulo nativo */
+  ocrSpaceApiKey: string;
+  /** Google AI Studio — API key Gemini (Flash) para leer lomos / estantería con visión */
+  geminiApiKey: string;
   /** Token API PriceCharting Pro (parámetro t) */
   priceChartingToken: string;
   /** eBay Developers: para mediana de anuncios activos (Browse API) */
@@ -23,6 +27,8 @@ export const providerLinks = {
   screenScraper: 'https://www.screenscraper.fr',
   steamGridDb: 'https://www.steamgriddb.com',
   igdb: 'https://dev.twitch.tv/console',
+  ocrSpace: 'https://ocr.space/ocrapi/freekey',
+  geminiAiStudio: 'https://aistudio.google.com/apikey',
   priceCharting: 'https://www.pricecharting.com/pricecharting-pro?f=api',
   ebayDevelopers: 'https://developer.ebay.com',
 };
@@ -35,6 +41,8 @@ const EMPTY: ApiCredentials = {
   steamGridDbApiKey: '',
   igdbClientId: '',
   igdbClientSecret: '',
+  ocrSpaceApiKey: '',
+  geminiApiKey: '',
   priceChartingToken: '',
   ebayClientId: '',
   ebayClientSecret: '',
@@ -54,6 +62,8 @@ export async function getApiCredentials(): Promise<ApiCredentials> {
       steamGridDbApiKey: parsed.steamGridDbApiKey ?? '',
       igdbClientId: parsed.igdbClientId ?? '',
       igdbClientSecret: parsed.igdbClientSecret ?? '',
+      ocrSpaceApiKey: parsed.ocrSpaceApiKey ?? '',
+      geminiApiKey: parsed.geminiApiKey ?? '',
       priceChartingToken: parsed.priceChartingToken ?? '',
       ebayClientId: parsed.ebayClientId ?? '',
       ebayClientSecret: parsed.ebayClientSecret ?? '',

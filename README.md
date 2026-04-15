@@ -7,6 +7,7 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 - **Portadas y fuentes:** [docs/PORTADAS_Y_FUENTES.md](docs/PORTADAS_Y_FUENTES.md) — orden de resolución (GameplayStores, SteamGridDB, IGDB, ScreenScraper), uso del buscador JSON de la tienda, metadatos y archivos clave.
 - **Texto en la app:** Ajustes → «Documentación: portadas y fuentes» (sale de `constants/documentation/portadasYFuentesDoc.ts`; si cambias la lógica, actualiza ese módulo y el Markdown).
 - **Flujo Android + iOS:** [docs/WORKFLOW_ANDROID_IOS.md](docs/WORKFLOW_ANDROID_IOS.md) — estructura de ramas, merges y setup recomendado para desarrollo paralelo sin conflictos.
+- **Registro de cambios:** [CHANGELOG.md](CHANGELOG.md) — obligatorio actualizarlo en cada PR/commit funcional.
 
 ## Get started
 

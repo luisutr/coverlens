@@ -27,6 +27,8 @@ const creds: ApiCredentials = {
   steamGridDbApiKey: '',
   igdbClientId: '',
   igdbClientSecret: '',
+  ocrSpaceApiKey: '',
+  geminiApiKey: '',
   priceChartingToken: 'test-token',
   ebayClientId: 'ebay-id',
   ebayClientSecret: 'ebay-secret',

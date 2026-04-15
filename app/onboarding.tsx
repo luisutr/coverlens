@@ -26,7 +26,7 @@ const BRAND = {
   border: '#cfe0f5',
 };
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 
 function Badge({ label, tone }: { label: string; tone: 'core' | 'recommended' | 'optional' }) {
   const bg =
@@ -58,6 +58,8 @@ export default function OnboardingScreen() {
     steamGridDbApiKey: '',
     igdbClientId: '',
     igdbClientSecret: '',
+    ocrSpaceApiKey: '',
+    geminiApiKey: '',
     priceChartingToken: '',
     ebayClientId: '',
     ebayClientSecret: '',
@@ -148,14 +150,15 @@ export default function OnboardingScreen() {
               barras o añade títulos a mano.
             </Text>
             <Text style={styles.heroBody}>
-              Los metadatos de ficha (título, plataforma, edición) se resuelven primero con{' '}
-              <Text style={styles.heroEm}>GameplayStores</Text> (sin cuenta), igual que en la tienda. IGDB y ScreenScraper
-              son opcionales: mejoran año, género, descripción y valoración cuando configures credenciales.
+              CoverLens usa <Text style={styles.heroEm}>GameplayStores</Text> como fuente principal para catálogo,
+              metadatos base, portadas y precios orientativos iniciales, sin necesidad de crear cuentas.
             </Text>
             <Text style={styles.heroBodyMuted}>
-              En Ajustes → Catálogo puedes ordenar y activar fuentes de metadatos y de portadas por separado. Los pasos
-              siguientes son claves opcionales (IGDB, SteamGridDB, ScreenScraper). La cotización (PriceCharting / eBay) se
-              configura después si la necesitas.
+              Las demás fuentes (IGDB, SteamGridDB, ScreenScraper, PriceCharting y eBay) son recomendadas, no obligatorias:
+              ayudan a completar fichas, mejorar carátulas y refinar valoraciones cuando falta información o hay varias
+              ediciones. El escáner base (barcode y manual) funciona sin APIs. Para lotes, puedes usar «Lote IA» pegando
+              el JSON desde Gemini (app/web), sin guardar claves en CoverLens. En Ajustes → Catálogo puedes activar solo
+              las fuentes que te interesen y ordenar su prioridad.
             </Text>
           </View>
         ) : null}
@@ -167,9 +170,9 @@ export default function OnboardingScreen() {
               <Badge label="Recomendado" tone="recommended" />
             </View>
             <Text style={styles.body}>
-              Opcional pero muy útil: con Client ID y Secret de Twitch (gratis) la app puede rellenar año de salida, género,
-              desarrollador, descripción y nota media. El escáner ya obtiene título y plataforma desde GameplayStores sin
-              IGDB; IGDB completa la ficha cuando lo actives en el orden de fuentes.
+              Opcional pero muy útil: con Client ID y Secret de Twitch (gratis) la app rellena año de salida, género,
+              desarrollador, descripción y nota media. Sin IGDB sigues catalogando con GameplayStores; IGDB se limita a
+              enriquecer fichas cuando lo activas en el orden de fuentes.
             </Text>
             <Text style={styles.stepsBlock}>
               {`1) Cuenta Twitch: si no tienes, crea una en twitch.tv (gratis).\n`}
@@ -292,6 +295,30 @@ export default function OnboardingScreen() {
         ) : null}
 
         {step === 4 ? (
+          <View style={styles.card}>
+            <View style={styles.cardTitleRow}>
+              <Text style={[styles.title, { fontFamily: 'Orbitron_700Bold' }]}>Lote IA (Gemini externo)</Text>
+              <Badge label="Opcional" tone="optional" />
+            </View>
+            <Text style={styles.body}>
+              No necesitas API key en CoverLens para lotes. En «Escáner → Lote IA», haces o eliges foto, abres Gemini
+              (web/app), pegas un prompt preparado y traes un JSON con título + plataforma para importarlo.
+            </Text>
+            <Text style={styles.stepsBlock}>
+              {`1) En Escáner, entra en «Lote IA».\n`}
+              {`2) Pulsa «Cámara o fototeca (para Gemini)» y prepara la foto de estantería.\n`}
+              {`3) Pulsa «Abrir Gemini» y sube la imagen allí.\n`}
+              {`4) Usa el prompt recomendado y pide SOLO JSON.\n`}
+              {`5) Pega el resultado en CoverLens y pulsa «Procesar lote pegado».`}
+            </Text>
+            <Text style={styles.bodyMuted}>
+              Si más adelante quieres usar APIs en la app (IGDB, SteamGridDB, ScreenScraper, PriceCharting, eBay),
+              puedes configurarlas en Ajustes. Ninguna es obligatoria para empezar.
+            </Text>
+          </View>
+        ) : null}
+
+        {step === 5 ? (
           <View style={styles.card}>
             <Text style={[styles.title, { fontFamily: 'Orbitron_700Bold' }]}>Guía práctica</Text>
             <Text style={styles.body}>

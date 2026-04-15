@@ -1,12 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-// expo-image-picker se carga dinámicamente en onScanWithOcr
+import { CameraView, scanFromURLAsync, useCameraPermissions, type BarcodeType } from 'expo-camera';
+// expo-image-picker se carga dinámicamente en onBarcodeFromPhoto
+import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React from 'react';
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -19,34 +21,42 @@ import {
   View,
 } from 'react-native';
 import { theme } from '../../constants/theme';
-import { addGame, getGameByBarcode, initDatabase } from '../../database/dbConfig';
+import { addGame, getGameByBarcode, getGames, initDatabase } from '../../database/dbConfig';
 import { resolveMetadata } from '../../services/metadataResolver';
 import { enqueueCoverThumbCache } from '../../services/storage/coverThumbCache';
 import { assessBarcode } from '../../services/utils/barcodeValidation';
+import { emitCatalogRefresh } from '../../services/catalogRefreshBus';
 import {
   canonicalizePlatform,
   normalizeManualGameSearch,
   splitTitleAndPlatform,
 } from '../../services/utils/platformUtils';
 import { advanceTourAfterBarcodeScan } from '../../services/firstRunTour';
-import { extractGameInfoFromOcr } from '../../services/utils/ocrParser';
+import { OCR_IMAGE_MEDIA_TYPES, pickImageForOcr } from '../../services/ocrImagePicker';
 
-type Mode = 'barcode' | 'ocr' | 'manual';
+type Mode = 'barcode' | 'batch_prompt' | 'manual';
+type BatchParsedItem = { title: string; platform: string | null };
 
-// Importamos MLKit OCR de forma dinámica para no romper si aún no está instalado
-let recognizeText: ((path: string) => Promise<{ text: string }>) | null = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mlkit = require('@infinitered/react-native-mlkit-text-recognition');
-  recognizeText = mlkit.recognizeText;
-} catch {
-  recognizeText = null;
-}
+const GEMINI_BATCH_PROMPT = [
+  'Quiero catalogar juegos fisicos para la app CoverLens.',
+  'Analiza la foto de mi estanteria y devuelve SOLO JSON valido (sin markdown, sin comentarios) con este formato exacto:',
+  '{"games":[{"title":"TITULO EXACTO","platform":"PLATAFORMA"}]}',
+  'Reglas:',
+  '- Usa solo juegos que se lean con claridad.',
+  '- Un elemento por juego.',
+  '- "platform" siempre rellena (PS5, PS4, PS3, PS2, PS1, Xbox Series X, Xbox One, Xbox 360, Xbox, Switch, Wii U, Wii, GameCube, N64, DS, 3DS, PSP, PSVita, PC).',
+  '- Si dudas entre dos titulos, NO inventes: omite ese juego.',
+].join('\n');
+
+const BARCODE_SCAN_FROM_IMAGE_TYPES: BarcodeType[] = ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39'];
 
 export default function EscanerScreen() {
   const router = useRouter();
   const [mode, setMode] = React.useState<Mode>('barcode');
   const [rawTitle, setRawTitle] = React.useState('');
+  const [batchRaw, setBatchRaw] = React.useState('');
+  const [batchImporting, setBatchImporting] = React.useState(false);
+  const [promptCopied, setPromptCopied] = React.useState(false);
   const [lastBarcode, setLastBarcode] = React.useState<string | null>(null);
   const [discOnly, setDiscOnly] = React.useState(false);
   const [favorite, setFavorite] = React.useState(false);
@@ -54,13 +64,6 @@ export default function EscanerScreen() {
   const [scannerEnabled, setScannerEnabled] = React.useState(true);
   const [permission, requestPermission] = useCameraPermissions();
   const scanLockRef = React.useRef(false);
-
-  // OCR — estado del modal de confirmación
-  const [ocrProcessing, setOcrProcessing] = React.useState(false);
-  const [ocrModal, setOcrModal] = React.useState(false);
-  const [ocrTitle, setOcrTitle] = React.useState('');
-  const [ocrPlatform, setOcrPlatform] = React.useState('');
-  const [ocrRawText, setOcrRawText] = React.useState('');
 
   // Estado para modal "juego no encontrado por barcode"
   const [notFoundModal, setNotFoundModal] = React.useState(false);
@@ -110,6 +113,7 @@ export default function EscanerScreen() {
         await initDatabase();
         const existing = await getGameByBarcode(barcode);
         if (existing) {
+          emitCatalogRefresh();
           router.replace('/');
           return;
         }
@@ -149,9 +153,11 @@ export default function EscanerScreen() {
         });
         enqueueCoverThumbCache(newId, resolved.coverUrl ?? null);
         void advanceTourAfterBarcodeScan();
+        emitCatalogRefresh();
         router.replace('/');
       } catch (error) {
         if (isLikelyDuplicateError(error)) {
+          emitCatalogRefresh();
           router.replace('/');
           return;
         }
@@ -192,11 +198,8 @@ export default function EscanerScreen() {
   }, [barcodeFixValue, resetBarcodeScanGate, runBarcodeInsertFlow]);
 
   // ─── BARCODE ────────────────────────────────────────────────────────────────
-  const onBarcodeScanned = React.useCallback(
-    ({ data }: { data: string }) => {
-      const barcode = data.replace(/\s/g, '').replace(/[^0-9A-Za-z]/g, '');
-      if (!barcode || saving || mode !== 'barcode' || lastBarcode === barcode || scanLockRef.current) return;
-
+  const handleBarcodeCandidate = React.useCallback(
+    (barcode: string) => {
       const assessment = assessBarcode(barcode);
       if (!assessment.ok) {
         scanLockRef.current = true;
@@ -217,8 +220,74 @@ export default function EscanerScreen() {
 
       void runBarcodeInsertFlow(barcode);
     },
-    [lastBarcode, mode, resetBarcodeScanGate, runBarcodeInsertFlow, saving]
+    [resetBarcodeScanGate, runBarcodeInsertFlow]
   );
+
+  const onBarcodeScanned = React.useCallback(
+    ({ data }: { data: string }) => {
+      const barcode = data.replace(/\s/g, '').replace(/[^0-9A-Za-z]/g, '');
+      if (!barcode || saving || mode !== 'barcode' || lastBarcode === barcode || scanLockRef.current) return;
+      handleBarcodeCandidate(barcode);
+    },
+    [handleBarcodeCandidate, lastBarcode, mode, saving]
+  );
+
+  const onBarcodeFromPhoto = React.useCallback(async () => {
+    if (saving || mode !== 'barcode' || scanLockRef.current) return;
+    if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
+      Alert.alert('No disponible', 'Leer un código desde una foto solo está soportado en la app para móvil.');
+      return;
+    }
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const ImagePicker = require('expo-image-picker') as typeof import('expo-image-picker');
+      const lib = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!lib.granted) {
+        Alert.alert('Fototeca', 'Activa el acceso a Fotos para elegir una imagen con el código de barras.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: OCR_IMAGE_MEDIA_TYPES,
+        quality: 0.92,
+        allowsEditing: false,
+      });
+      if (result.canceled || !result.assets[0]?.uri) return;
+
+      let codes: { data: string }[];
+      try {
+        codes = await scanFromURLAsync(result.assets[0].uri, BARCODE_SCAN_FROM_IMAGE_TYPES);
+      } catch (e) {
+        Alert.alert('Error', `No se pudo analizar la imagen: ${String(e).slice(0, 120)}`);
+        return;
+      }
+
+      if (!codes.length) {
+        const iosNote =
+          Platform.OS === 'ios'
+            ? '\n\nEn iOS la lectura desde fototeca suele limitarse (a menudo solo QR); para códigos EAN/UPC de juegos conviene la cámara en vivo.'
+            : '\n\nPrueba una foto más nítida con el código grande y centrado.';
+        Alert.alert('Sin código detectado', `No se encontró un código de barras legible en la imagen.${iosNote}`);
+        return;
+      }
+
+      const candidates = Array.from(
+        new Set(
+          codes
+            .map((c) => c.data.replace(/\s/g, '').replace(/[^0-9A-Za-z]/g, ''))
+            .filter(Boolean)
+        )
+      );
+      const preferred =
+        candidates.find((c) => assessBarcode(c).ok) ?? candidates[0] ?? '';
+      if (!preferred) {
+        Alert.alert('Sin código', 'No se pudo interpretar el contenido del código detectado.');
+        return;
+      }
+      handleBarcodeCandidate(preferred);
+    } catch (e) {
+      Alert.alert('Error', `No se pudo abrir la fototeca: ${String(e).slice(0, 100)}`);
+    }
+  }, [handleBarcodeCandidate, mode, saving]);
 
   // ─── BARCODE NOT FOUND — guardar con título manual ────────────────────────
   const onConfirmNotFound = React.useCallback(async () => {
@@ -251,9 +320,11 @@ export default function EscanerScreen() {
       });
       enqueueCoverThumbCache(newId, resolved.coverUrl ?? null);
       void advanceTourAfterBarcodeScan();
+      emitCatalogRefresh();
       router.replace('/');
     } catch (error) {
       if (isLikelyDuplicateError(error)) {
+        emitCatalogRefresh();
         router.replace('/');
         return;
       }
@@ -263,82 +334,181 @@ export default function EscanerScreen() {
     }
   }, [discOnly, favorite, notFoundBarcode, notFoundPlatform, notFoundTitle, router]);
 
-  // ─── OCR ─────────────────────────────────────────────────────────────────────
-  const onScanWithOcr = React.useCallback(async () => {
-    if (!recognizeText) {
+  const parseBatchInput = React.useCallback((raw: string): BatchParsedItem[] => {
+    const trimmed = raw.trim();
+    if (!trimmed) return [];
+
+    const withoutFences = trimmed
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+    const maybeJson = withoutFences.match(/\{[\s\S]*\}/)?.[0] ?? withoutFences;
+
+    try {
+      const parsed = JSON.parse(maybeJson) as { games?: { title?: unknown; platform?: unknown }[] };
+      if (Array.isArray(parsed.games)) {
+        return parsed.games
+          .map((g) => ({
+            title: String(g?.title ?? '').trim(),
+            platform: String(g?.platform ?? '').trim() || null,
+          }))
+          .filter((g) => g.title.length >= 2);
+      }
+    } catch {
+      // Fallback a parseo por lineas.
+    }
+
+    return withoutFences
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => line.replace(/^[-*•\d.)\s]+/, '').trim())
+      .map((line) => {
+        const pipe = line.split('|').map((x) => x.trim()).filter(Boolean);
+        if (pipe.length >= 2) {
+          return { title: pipe[0], platform: pipe[1] };
+        }
+        const dash = line.split(/\s[-–—]\s/).map((x) => x.trim()).filter(Boolean);
+        if (dash.length >= 2) {
+          return { title: dash[0], platform: dash[1] };
+        }
+        const split = splitTitleAndPlatform(normalizeManualGameSearch(line) || line);
+        return { title: split.titleHint, platform: split.platformHint };
+      })
+      .filter((g) => g.title.length >= 2);
+  }, []);
+
+  const onOpenGemini = React.useCallback(async () => {
+    try {
+      await Linking.openURL('https://gemini.google.com/app');
+    } catch {
+      Alert.alert('No se pudo abrir', 'Abre manualmente https://gemini.google.com/app en tu navegador.');
+    }
+  }, []);
+
+  const onCopyPrompt = React.useCallback(async () => {
+    try {
+      await Clipboard.setStringAsync(GEMINI_BATCH_PROMPT);
+      setPromptCopied(true);
+      setTimeout(() => setPromptCopied(false), 1800);
+    } catch {
+      Alert.alert('No se pudo copiar', 'Selecciona el texto del prompt y cópialo manualmente.');
+    }
+  }, []);
+
+  const onCaptureShelfPhoto = React.useCallback(async () => {
+    const uri = await pickImageForOcr('Foto para Gemini', '¿Cámara o fototeca?');
+    if (!uri) return;
+    Alert.alert(
+      'Foto lista',
+      'La imagen se ha tomado/seleccionado. Ahora súbela en Gemini (app o web) con el prompt y pega aquí el JSON.'
+    );
+  }, []);
+
+  const onImportGeminiBatch = React.useCallback(async () => {
+    const parsed = parseBatchInput(batchRaw);
+    if (parsed.length === 0) {
       Alert.alert(
-        'OCR no disponible',
-        'Hace falta un build de desarrollo con el módulo nativo: en el PC ejecuta npx expo run:android (o run:ios). Expo Go no incluye ML Kit.'
+        'Formato no valido',
+        'Pega un JSON como {"games":[{"title":"...","platform":"..."}]} o lineas tipo "Titulo | Plataforma".'
       );
       return;
     }
 
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const ImagePicker = require('expo-image-picker') as typeof import('expo-image-picker');
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images' as const],
-        quality: 0.85,
-        allowsEditing: false,
-      });
-      if (result.canceled || !result.assets[0]) return;
-
-      setOcrProcessing(true);
-      const { text } = await recognizeText(result.assets[0].uri);
-      const parsed = extractGameInfoFromOcr(text);
-
-      setOcrTitle(parsed.title);
-      setOcrPlatform(parsed.platform ?? '');
-      setOcrRawText(parsed.rawText);
-      setOcrModal(true);
-    } catch (e) {
-      Alert.alert('Error OCR', `No se pudo procesar la imagen: ${String(e).slice(0, 100)}`);
-    } finally {
-      setOcrProcessing(false);
-    }
-  }, []);
-
-  const onConfirmOcr = React.useCallback(async () => {
-    if (!ocrTitle.trim()) {
-      Alert.alert('Falta el titulo', 'Escribe o corrige el titulo antes de buscar.');
-      return;
-    }
-    setOcrModal(false);
-    setSaving(true);
+    setBatchImporting(true);
+    const failureNotes: string[] = [];
     try {
       await initDatabase();
-      const resolved = await resolveMetadata({
-        titleHint: ocrTitle.trim(),
-        platformHint: ocrPlatform.trim() || null,
-      });
-      const newId = await addGame({
-        title: resolved.title, barcode: null, platform: resolved.platform,
-        version: resolved.version, releaseYear: resolved.releaseYear,
-        genre: resolved.genre, developer: resolved.developer,
-        publisher: resolved.publisher, description: resolved.description,
-        rating: resolved.rating, franchise: resolved.franchise,
-        coverUrl: resolved.coverUrl ?? null,
-        headerImageUrl: resolved.headerImageUrl ?? null,
-        metadataStatus: resolved.status, metadataSource: resolved.source,
-        lastError: resolved.error ?? null,
-        favorite: favorite ? 1 : 0, discOnly: discOnly ? 1 : 0,
-        valueCents: resolved.valueCents ?? null,
-        valueCurrency: resolved.valueCurrency ?? null,
-        valueSource: resolved.valueSource ?? null,
-      });
-      enqueueCoverThumbCache(newId, resolved.coverUrl ?? null);
-      void advanceTourAfterBarcodeScan();
-      router.replace('/');
-    } catch (error) {
-      if (isLikelyDuplicateError(error)) {
-        router.replace('/');
-        return;
+      const current = await getGames();
+      const existing = new Set(
+        current.map((g) => `${g.title.trim().toLowerCase()}|${canonicalizePlatform(g.platform).toLowerCase()}`)
+      );
+
+      let added = 0;
+      let skipped = 0;
+      let failed = 0;
+      const seenInput = new Set<string>();
+
+      const catalogDuplicateKey = (title: string, platform: string) =>
+        `${title.trim().toLowerCase()}|${canonicalizePlatform(platform).toLowerCase()}`;
+
+      for (const candidate of parsed) {
+        let titleHint = candidate.title.trim();
+        let platformHint = candidate.platform?.trim() ? canonicalizePlatform(candidate.platform.trim()) : null;
+        if (!titleHint) continue;
+
+        if (!platformHint) {
+          const split = splitTitleAndPlatform(normalizeManualGameSearch(titleHint) || titleHint);
+          titleHint = split.titleHint.trim();
+          platformHint = split.platformHint ? canonicalizePlatform(split.platformHint) : null;
+        }
+        if (!titleHint) continue;
+
+        const safeTitle = titleHint || 'Juego';
+        const safePlatform = platformHint?.trim() || 'Plataforma desconocida';
+        const inputDedupKey = `${safeTitle.toLowerCase()}|${safePlatform.toLowerCase()}`;
+        if (seenInput.has(inputDedupKey)) {
+          skipped++;
+          continue;
+        }
+        seenInput.add(inputDedupKey);
+
+        try {
+          const postKey = catalogDuplicateKey(safeTitle, safePlatform);
+          if (existing.has(postKey)) {
+            skipped++;
+            continue;
+          }
+          await addGame({
+            title: safeTitle,
+            barcode: null,
+            platform: safePlatform,
+            version: null,
+            releaseYear: null,
+            genre: null,
+            developer: null,
+            publisher: null,
+            description: null,
+            rating: null,
+            franchise: null,
+            coverUrl: null,
+            headerImageUrl: null,
+            metadataStatus: 'pending',
+            metadataSource: 'gemini_batch',
+            lastError: null,
+            favorite: favorite ? 1 : 0,
+            discOnly: discOnly ? 1 : 0,
+            valueCents: null,
+            valueCurrency: null,
+            valueSource: null,
+          });
+          existing.add(postKey);
+          added++;
+        } catch (error) {
+          if (isLikelyDuplicateError(error)) {
+            skipped++;
+            continue;
+          }
+          failed++;
+          failureNotes.push(`- ${titleHint.slice(0, 30)}: ${String(error).slice(0, 90)}`);
+        }
       }
-      Alert.alert('Error', 'No se pudo guardar el juego.');
+
+      let body = `Añadidos: ${added}\nOmitidos: ${skipped}\nFallidos: ${failed}`;
+      if (failureNotes.length > 0) {
+        body += `\n\nDetalle (max 4):\n${failureNotes.slice(0, 4).join('\n')}`;
+      }
+      body += '\n\nPuedes usar "Reintentar metadatos" en Ajustes cuando quieras completar fichas en lote.';
+      Alert.alert('Importacion por lote completada', body);
+      if (added > 0) {
+        setBatchRaw('');
+        emitCatalogRefresh();
+      }
     } finally {
-      setSaving(false);
+      setBatchImporting(false);
     }
-  }, [discOnly, favorite, ocrPlatform, ocrTitle, router]);
+  }, [batchRaw, discOnly, favorite, parseBatchInput]);
 
   // ─── MANUAL ──────────────────────────────────────────────────────────────────
   const onSaveManual = React.useCallback(async () => {
@@ -374,9 +544,11 @@ export default function EscanerScreen() {
       enqueueCoverThumbCache(newId, resolved.coverUrl ?? null);
       void advanceTourAfterBarcodeScan();
       setRawTitle('');
+      emitCatalogRefresh();
       router.replace('/');
     } catch (error) {
       if (isLikelyDuplicateError(error)) {
+        emitCatalogRefresh();
         router.replace('/');
         return;
       }
@@ -393,27 +565,48 @@ export default function EscanerScreen() {
 
       {/* Selector de modo */}
       <View style={styles.segment}>
-        {(['barcode', 'ocr', 'manual'] as Mode[]).map((m) => (
+        {(['barcode', 'batch_prompt', 'manual'] as Mode[]).map((m) => (
           <Pressable
             key={m}
             onPress={() => setMode(m)}
             style={[styles.segmentBtn, mode === m && styles.segmentBtnActive]}
             accessibilityRole="button"
-            accessibilityLabel={m === 'barcode' ? 'Modo barcode' : m === 'ocr' ? 'Modo portada OCR' : 'Modo manual'}
+            accessibilityLabel={
+              m === 'barcode'
+                ? 'Modo barcode'
+                : m === 'batch_prompt'
+                  ? 'Modo lote con Gemini externo'
+                    : 'Modo manual'
+            }
             accessibilityHint="Cambia la forma de añadir juegos"
           >
             <Ionicons
-              name={m === 'barcode' ? 'barcode-outline' : m === 'ocr' ? 'camera-outline' : 'create-outline'}
+              name={
+                m === 'barcode'
+                  ? 'barcode-outline'
+                  : m === 'batch_prompt'
+                    ? 'chatbubbles-outline'
+                      : 'create-outline'
+              }
               size={16}
               color={mode === m ? '#fff' : theme.colors.textDim}
             />
             <Text style={[styles.segmentText, mode === m && styles.segmentTextActive]}>
-              {m === 'barcode' ? 'Barcode' : m === 'ocr' ? 'Portada OCR' : 'Manual'}
+              {m === 'barcode'
+                ? 'Barcode'
+                : m === 'batch_prompt'
+                  ? 'Lote IA'
+                    : 'Manual'}
             </Text>
           </Pressable>
         ))}
       </View>
 
+      <ScrollView
+        style={styles.mainScroll}
+        contentContainerStyle={styles.mainScrollContent}
+        showsVerticalScrollIndicator={false}
+      >
       {/* Barcode */}
       {mode === 'barcode' && (
         <View>
@@ -444,49 +637,129 @@ export default function EscanerScreen() {
               )}
             </View>
           )}
+          {(Platform.OS === 'ios' || Platform.OS === 'android') && (
+            <TouchableOpacity
+              style={[styles.outlineBtn, (saving || !scannerEnabled) && styles.actionBtnDisabled]}
+              onPress={() => void onBarcodeFromPhoto()}
+              disabled={saving || !scannerEnabled}
+              accessibilityRole="button"
+              accessibilityLabel="Elegir foto de la galería con código de barras"
+            >
+              <Ionicons name="images-outline" size={20} color={theme.colors.primary} />
+              <Text style={styles.outlineBtnText}>Elegir foto con el código</Text>
+            </TouchableOpacity>
+          )}
           <Text style={styles.helpText}>
-            Acerca un código EAN/UPC (8, 12 o 13 dígitos). Validamos el código antes de guardar para evitar lecturas
-            erróneas.
+            Acerca un código EAN/UPC (8, 12 o 13 dígitos) con la cámara, o usa una foto de la galería donde se vea bien el
+            código. Validamos el código antes de guardar para evitar lecturas erróneas.
           </Text>
         </View>
       )}
 
-      {/* OCR — Portada / Canto */}
-      {mode === 'ocr' && (
+      {/* Lote IA (Gemini externo) */}
+      {mode === 'batch_prompt' && (
         <View style={styles.ocrContainer}>
           <View style={styles.ocrHintBox}>
-            <Ionicons name="information-circle-outline" size={18} color={theme.colors.primary} />
+            <Ionicons name="chatbubbles-outline" size={18} color={theme.colors.primary} />
             <Text style={styles.ocrHint}>
-              Fotografía el{' '}
-              <Text style={{ color: '#fff', fontWeight: '700' }}>canto del juego</Text>
-              {' '}(el lateral estrecho) para mejores resultados. El título y la plataforma suelen estar limpios ahí.
+              Flujo recomendado: foto de varios lomos en Gemini, respuesta en JSON y pegado en CoverLens para añadir en lote.
             </Text>
           </View>
 
+          <View style={styles.batchStepsCard}>
+            <Text style={styles.batchStepsTitle}>Cómo hacer una buena foto</Text>
+            <Text style={styles.batchStepItem}>1) Coloca la estantería en horizontal o vertical, lo más recta posible.</Text>
+            <Text style={styles.batchStepItem}>2) Encaja los lomos dentro del marco, sin cortar títulos.</Text>
+            <Text style={styles.batchStepItem}>3) Evita reflejos y desenfoque; mejor luz frontal uniforme.</Text>
+            <Text style={styles.batchStepItem}>4) Intenta no superar 12-18 juegos por foto para mejor precisión.</Text>
+          </View>
+
+          <View style={styles.shelfPreviewCard}>
+            <Text style={styles.shelfPreviewTitle}>Ejemplo visual (referencia)</Text>
+            <View style={styles.shelfPreviewFrame}>
+              {[
+                ['#f2f2f2', '#111'],
+                ['#e7f4ff', '#1d7bbd'],
+                ['#f8ffe7', '#4b8d2a'],
+                ['#1d1d1d', '#cfd8dc'],
+                ['#6a1b9a', '#f1d1ff'],
+                ['#ff8f00', '#2e1c00'],
+                ['#ffffff', '#0f0f0f'],
+                ['#263238', '#d1e9f5'],
+              ].map((spine, idx) => (
+                <View key={idx} style={[styles.shelfSpine, { backgroundColor: spine[0] }]}>
+                  <View style={[styles.shelfSpineBand, { backgroundColor: spine[1] }]} />
+                </View>
+              ))}
+            </View>
+            <Text style={styles.shelfPreviewCaption}>Mete todos los lomos en el encuadre y evita inclinación fuerte.</Text>
+          </View>
+
           <TouchableOpacity
-            style={[styles.actionBtn, ocrProcessing && styles.actionBtnDisabled]}
-            onPress={onScanWithOcr}
-            disabled={ocrProcessing}
+            style={styles.outlineBtn}
+            onPress={() => void onCaptureShelfPhoto()}
             accessibilityRole="button"
-            accessibilityLabel="Hacer foto y reconocer texto"
-            accessibilityHint="Abre la cámara para extraer título y plataforma por OCR"
+            accessibilityLabel="Hacer o elegir foto para subir a Gemini"
           >
-            {ocrProcessing ? (
+            <Ionicons name="camera-outline" size={20} color={theme.colors.primary} />
+            <Text style={styles.outlineBtnText}>1) Capturar foto del lote</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => void onOpenGemini()}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir Gemini web para analizar la foto"
+          >
+            <Ionicons name="open-outline" size={20} color="#fff" />
+            <Text style={styles.actionBtnText}>2) Abrir Gemini (web/app)</Text>
+          </TouchableOpacity>
+          <View style={styles.promptHeader}>
+            <Text style={styles.modalLabel}>3) Prompt para Gemini</Text>
+            <TouchableOpacity
+              onPress={() => void onCopyPrompt()}
+              style={styles.copyBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Copiar prompt de Gemini"
+            >
+              <Ionicons name={promptCopied ? 'checkmark' : 'copy-outline'} size={15} color={theme.colors.primary} />
+              <Text style={styles.copyBtnText}>{promptCopied ? 'Copiado' : 'Copiar'}</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.promptBox}>
+            <Text selectable style={styles.promptText}>
+              {GEMINI_BATCH_PROMPT}
+            </Text>
+          </View>
+          <Text style={styles.modalLabel}>4) Pega la respuesta JSON</Text>
+          <TextInput
+            style={styles.batchInput}
+            value={batchRaw}
+            onChangeText={setBatchRaw}
+            placeholder='Ejemplo: {"games":[{"title":"Halo 3","platform":"Xbox 360"}]}'
+            placeholderTextColor={theme.colors.textDim}
+            multiline
+            textAlignVertical="top"
+          />
+          <TouchableOpacity
+            style={[styles.actionBtn, (batchImporting || !batchRaw.trim()) && styles.actionBtnDisabled]}
+            onPress={() => void onImportGeminiBatch()}
+            disabled={batchImporting || !batchRaw.trim()}
+            accessibilityRole="button"
+            accessibilityLabel="Agregar juegos del lote a la colección"
+          >
+            {batchImporting ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
               <>
-                <Ionicons name="camera" size={20} color="#fff" />
-                <Text style={styles.actionBtnText}>Hacer foto y reconocer texto</Text>
+                <Ionicons name="download-outline" size={20} color="#fff" />
+                <Text style={styles.actionBtnText}>5) Agregar a la colección</Text>
               </>
             )}
           </TouchableOpacity>
-
-          {!recognizeText && (
-            <Text style={styles.ocrWarning}>
-              ⚠ OCR requiere build nativo. Instala la librería y ejecuta{' '}
-              <Text style={{ fontFamily: 'monospace' }}>npx expo run:ios</Text>.
-            </Text>
-          )}
+          <Text style={styles.ocrWarning}>
+            Consejo: pide solo JSON en la respuesta. CoverLens importa rápido (título/plataforma) y deja metadatos en
+            pendiente para completarlos luego desde Ajustes.
+          </Text>
         </View>
       )}
 
@@ -542,6 +815,7 @@ export default function EscanerScreen() {
           accessibilityLabel="Marcar como favorito"
         />
       </View>
+      </ScrollView>
 
       {/* Modal — juego no encontrado por barcode */}
       <Modal visible={notFoundModal} transparent animationType="slide" onRequestClose={() => { setNotFoundModal(false); scanLockRef.current = false; setScannerEnabled(true); }}>
@@ -667,65 +941,14 @@ export default function EscanerScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Modal de confirmación OCR */}
-      <Modal visible={ocrModal} transparent animationType="slide" onRequestClose={() => setOcrModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Confirmar datos OCR</Text>
-            <Text style={styles.modalSubtitle}>Corrige si algo no está bien antes de buscar en IGDB.</Text>
-
-            <Text style={styles.modalLabel}>Título detectado</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={ocrTitle}
-              onChangeText={setOcrTitle}
-              placeholderTextColor={theme.colors.textDim}
-              placeholder="Título del juego"
-            />
-
-            <Text style={styles.modalLabel}>Plataforma detectada</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={ocrPlatform}
-              onChangeText={setOcrPlatform}
-              placeholderTextColor={theme.colors.textDim}
-              placeholder="Ej: PlayStation 4, Xbox 360..."
-            />
-
-            {ocrRawText ? (
-              <>
-                <Text style={styles.modalLabel}>Texto crudo del OCR</Text>
-                <Text style={styles.modalRaw} numberOfLines={4}>{ocrRawText}</Text>
-              </>
-            ) : null}
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalCancelBtn}
-                onPress={() => setOcrModal(false)}
-                accessibilityRole="button"
-                accessibilityLabel="Cancelar OCR"
-              >
-                <Text style={styles.modalCancelText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalConfirmBtn}
-                onPress={onConfirmOcr}
-                accessibilityRole="button"
-                accessibilityLabel="Confirmar OCR y buscar"
-              >
-                <Text style={styles.modalConfirmText}>Buscar en IGDB</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background, paddingHorizontal: 16, paddingTop: 70 },
+  mainScroll: { flex: 1 },
+  mainScrollContent: { paddingBottom: 28 },
   titulo: { color: theme.colors.primary, fontSize: 22, fontWeight: '800', letterSpacing: 2, marginBottom: 16 },
   segment: { flexDirection: 'row', backgroundColor: '#0e0e0e', borderRadius: 12, padding: 4, marginBottom: 18, gap: 3 },
   segmentBtn: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 9, flexDirection: 'row', justifyContent: 'center', gap: 5 },
@@ -742,9 +965,99 @@ const styles = StyleSheet.create({
   ocrHintBox: { flexDirection: 'row', gap: 8, backgroundColor: 'rgba(0,100,255,0.08)', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: 'rgba(0,100,255,0.2)' },
   ocrHint: { flex: 1, color: theme.colors.textDim, fontSize: 13, lineHeight: 19 },
   ocrWarning: { color: '#f1c40f', fontSize: 12, lineHeight: 18 },
+  batchStepsCard: {
+    borderWidth: 1,
+    borderColor: 'rgba(0,127,255,0.25)',
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,127,255,0.07)',
+    padding: 12,
+    gap: 6,
+  },
+  batchStepsTitle: { color: '#fff', fontWeight: '700', fontSize: 14, marginBottom: 2 },
+  batchStepItem: { color: theme.colors.textDim, fontSize: 12, lineHeight: 18 },
+  shelfPreviewCard: {
+    borderWidth: 1,
+    borderColor: '#2d2d2d',
+    borderRadius: 12,
+    backgroundColor: '#101010',
+    padding: 12,
+    gap: 8,
+  },
+  shelfPreviewTitle: { color: theme.colors.textLight, fontWeight: '700', fontSize: 13 },
+  shelfPreviewFrame: {
+    flexDirection: 'row',
+    gap: 6,
+    backgroundColor: '#0b0b0b',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2b2b2b',
+    padding: 8,
+    minHeight: 94,
+    alignItems: 'stretch',
+  },
+  shelfSpine: {
+    flex: 1,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    overflow: 'hidden',
+  },
+  shelfSpineBand: {
+    height: 18,
+    width: '100%',
+    opacity: 0.92,
+  },
+  shelfPreviewCaption: { color: theme.colors.textDim, fontSize: 12, lineHeight: 17 },
+  promptHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  copyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(0,127,255,0.35)',
+    backgroundColor: 'rgba(0,127,255,0.09)',
+  },
+  copyBtnText: { color: theme.colors.primary, fontSize: 12, fontWeight: '700' },
+  promptBox: {
+    borderWidth: 1,
+    borderColor: '#333',
+    borderRadius: 10,
+    backgroundColor: '#101010',
+    padding: 10,
+    maxHeight: 220,
+  },
+  promptText: { color: theme.colors.textDim, fontSize: 12, lineHeight: 18 },
+  batchInput: {
+    borderWidth: 1,
+    borderColor: '#333',
+    borderRadius: 10,
+    color: theme.colors.textLight,
+    backgroundColor: '#111',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    minHeight: 150,
+    fontSize: 14,
+    marginBottom: 10,
+  },
   actionBtn: { backgroundColor: theme.colors.primary, borderRadius: 12, paddingVertical: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   actionBtnDisabled: { opacity: 0.5 },
   actionBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  outlineBtn: {
+    marginTop: 10,
+    borderRadius: 12,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0,127,255,0.45)',
+    backgroundColor: 'rgba(0,127,255,0.08)',
+  },
+  outlineBtnText: { color: theme.colors.primary, fontWeight: '700', fontSize: 14 },
   input: { borderWidth: 1, borderColor: '#333', borderRadius: 10, color: theme.colors.textLight, backgroundColor: '#111', paddingHorizontal: 12, paddingVertical: 12, marginBottom: 12, fontSize: 15 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 },
   rowLabel: { color: theme.colors.textLight, fontSize: 15 },
@@ -755,7 +1068,6 @@ const styles = StyleSheet.create({
   modalSubtitle: { color: theme.colors.textDim, fontSize: 13, marginBottom: 16 },
   modalLabel: { color: theme.colors.textDim, fontSize: 12, fontWeight: '600', marginBottom: 5, marginTop: 10 },
   modalInput: { backgroundColor: '#1a1a1a', color: '#fff', borderWidth: 1, borderColor: '#333', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
-  modalRaw: { color: '#555', fontSize: 11, fontFamily: 'monospace', marginTop: 4, lineHeight: 16 },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 20 },
   modalCancelBtn: { flex: 1, paddingVertical: 13, borderRadius: 10, borderWidth: 1, borderColor: '#444', alignItems: 'center' },
   modalCancelText: { color: theme.colors.textDim, fontWeight: '600' },
