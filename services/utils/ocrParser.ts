@@ -17,7 +17,7 @@ const PLATFORM_RULES: Array<{ test: (s: string) => boolean; label: string }> = [
   { test: (s) => /\bxbox\s*series|series\s*x\b|series\s*s\b/i.test(s), label: 'Xbox Series X|S' },
   { test: (s) => /\bxbox\s*one\b|xbone\b/i.test(s), label: 'Xbox One' },
   { test: (s) => /\bxbox\s*360\b/i.test(s), label: 'Xbox 360' },
-  { test: (s) => /\bnintendo\s*switch\b|\bswitch\b/i.test(s), label: 'Nintendo Switch' },
+  { test: (s) => /\bnintendo\s*switch\b|\bswitch\b/i.test(s), label: 'Switch' },
   { test: (s) => /\bwii\s*u\b/i.test(s), label: 'Wii U' },
   { test: (s) => /\bwii\b/i.test(s), label: 'Wii' },
   { test: (s) => /\b3ds\b|\bnintendo\s*3ds\b/i.test(s), label: 'Nintendo 3DS' },

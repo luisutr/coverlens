@@ -36,7 +36,7 @@ const SORT_OPTIONS: { key: CatalogSort; label: string }[] = [
   { key: 'title_asc', label: 'Título' },
   { key: 'platform_asc', label: 'Plataforma' },
   { key: 'year_desc', label: 'Año' },
-  { key: 'rating_desc', label: 'Nota' },
+  { key: 'rating_desc', label: 'Puntuación' },
   { key: 'value_desc', label: 'Valor' },
 ];
 

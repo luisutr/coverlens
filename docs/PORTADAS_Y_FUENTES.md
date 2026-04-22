@@ -32,19 +32,19 @@ GameplayStores ([gameplaystores.es](https://www.gameplaystores.es/)) no publica 
 
 ## Metadatos (título, ficha, estados)
 
-`resolveMetadata` (`services/metadataResolver.ts`) combina IGDB, barcode→GameplayStores, ScreenScraper y fallback de portada:
+`resolveMetadata` (`services/metadataResolver.ts`) encadena fuentes según **Ajustes → Catálogo → Orden de fuentes (metadatos)** (`services/metadataSourcePreferences.ts`). Por defecto: **GameplayStores → IGDB → ScreenScraper**. La primera fuente con datos válidos prioriza título y plataforma; las siguientes solo rellenan campos vacíos. IGDB y ScreenScraper se pueden desactivar; GameplayStores no requiere clave.
 
-- Con barcode y sin título: primero IGDB por EAN; si falla, `barcodeToTitle` en GameplayStores (y opcionalmente GameUPC) para rellenar título y plataforma.
+- **GameplayStores:** EAN (`busqueda?s=…`) o título+plataforma; `parseGamePlayStoresName`.
+- **IGDB:** si está activo y hay credenciales Twitch, EAN en `external_games` y búsqueda por título.
+- **ScreenScraper:** si está activo y hay usuario/contraseña.
 
-- Luego IGDB por título; si falla, ScreenScraper.
-
-- Si IGDB/ScreenScraper no devuelven ficha completa pero sí hay título (p. ej. solo desde GPS), puede guardarse `source` `cover_fallback` cuando la cadena de portadas obtiene imagen; el estado final pasa por `finalizeMetadataResult`.
+Tras fusionar metadatos, la **portada** del listado sigue la cadena de portadas (puede cambiar la URL que viniera del metadato).
 
 ## Estado resolved / partial
 
 `deriveMetadataStatusFromGameFields` (`services/utils/metadataCompleteness.ts`) define la regla única en catálogo:
 
-- **resolved:** portada con URL `http(s)` + título válido + plataforma conocida + al menos uno entre: año, género, desarrollador, publisher o descripción (>24 caracteres). No exige barcode ni precio.
+- **resolved:** portada con URL `http(s)` + título válido + plataforma conocida + al menos uno entre: año, género, desarrollador, publisher, descripción (>24 caracteres) o versión/edición no vacía. No exige barcode ni precio.
 - **partial:** falta portada, plataforma/título inválidos o ningún dato de ficha extra.
 
 Las importaciones (Playnite JSON/CSV, export CoverLens) recalculan el estado; un juego solo con nombre y plataforma queda `partial` hasta tener imagen y un dato de ficha.
@@ -63,7 +63,9 @@ Credenciales: IGDB, SteamGridDB y ScreenScraper en Ajustes (`credentialsStore`).
 | Regla resolved/partial | `services/utils/metadataCompleteness.ts` |
 | Etiqueta «Portada ·» | `services/utils/coverUrlSource.ts` |
 | Orden de portadas | `services/coverPreferenceResolver.ts` |
+| Orden de metadatos | `services/metadataSourcePreferences.ts` |
 | GameplayStores (categorías + matching) | `services/providers/gameplayStoresCoverProvider.ts` |
+| Metadatos GPS | `services/providers/gameplayStoresMetadataProvider.ts` |
 | Barcode / parseo nombres GPS | `services/utils/barcodeToTitle.ts` |
 | Flujo metadatos | `services/metadataResolver.ts` |
 | SteamGridDB | `services/providers/steamGridDbProvider.ts` |

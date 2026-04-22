@@ -50,6 +50,14 @@ import {
   type CoverSourcePreferences,
 } from '../../services/coverSourcePreferences';
 import {
+  DEFAULT_METADATA_SOURCE_PREFERENCES,
+  METADATA_PROVIDER_LABELS,
+  loadMetadataSourcePreferences,
+  moveMetadataProvider,
+  saveMetadataSourcePreferences,
+  type MetadataSourcePreferences,
+} from '../../services/metadataSourcePreferences';
+import {
   DEFAULT_VALUE_SOURCE_PREFERENCES,
   VALUE_PROVIDER_LABELS,
   loadValueSourcePreferences,
@@ -73,7 +81,7 @@ const IMPORT_HELP_INVALID_FILE =
   'CoverLens solo importa:\n\n' +
   '• JSON generado con «Exportar catálogo» en esta app (copia de seguridad o cambio de móvil).\n\n' +
   '• CSV creado en Playnite con la extensión «Library Exporter Advanced». En el CSV deben existir las columnas «Nombre» y «Plataformas» (el resto de columnas es opcional; no hace falta exportar todos los campos de Playnite).\n\n' +
-  'No sirve el backup .zip de Playnite ni hojas de cálculo al azar. Si importaste CSV desde Playnite, después usa «Reintentar metadatos» para bajar portadas desde IGDB.';
+  'No sirve el backup .zip de Playnite ni hojas de cálculo al azar. Si importaste CSV desde Playnite, después usa «Reintentar metadatos» para completar fichas según el orden de fuentes en Catálogo (GameplayStores, IGDB, etc.).';
 
 // ─── Componentes auxiliares ───────────────────────────────────────────────────
 
@@ -175,6 +183,10 @@ export default function AjustesScreen() {
     order: [...DEFAULT_VALUE_SOURCE_PREFERENCES.order],
     enabled: { ...DEFAULT_VALUE_SOURCE_PREFERENCES.enabled },
   }));
+  const [metadataPrefs, setMetadataPrefs] = React.useState<MetadataSourcePreferences>(() => ({
+    order: [...DEFAULT_METADATA_SOURCE_PREFERENCES.order],
+    enabled: { ...DEFAULT_METADATA_SOURCE_PREFERENCES.enabled },
+  }));
 
   const persistCoverPrefs = React.useCallback(async (next: CoverSourcePreferences) => {
     setCoverPrefs(next);
@@ -186,6 +198,11 @@ export default function AjustesScreen() {
     await saveValueSourcePreferences(next);
   }, []);
 
+  const persistMetadataPrefs = React.useCallback(async (next: MetadataSourcePreferences) => {
+    setMetadataPrefs(next);
+    await saveMetadataSourcePreferences(next);
+  }, []);
+
   React.useEffect(() => {
     getApiCredentials().then(setForm).catch(() => {});
     initDatabase()
@@ -193,6 +210,7 @@ export default function AjustesScreen() {
       .then((gs) => setGameCount(gs.length))
       .catch(() => {});
     loadCoverSourcePreferences().then(setCoverPrefs).catch(() => {});
+    loadMetadataSourcePreferences().then(setMetadataPrefs).catch(() => {});
     loadValueSourcePreferences().then(setValuePrefs).catch(() => {});
   }, []);
 
@@ -696,7 +714,7 @@ export default function AjustesScreen() {
           const ebayTok = await fetchEbayApplicationToken(form.ebayClientId, form.ebayClientSecret);
           if (ebayTok) {
             appendLog('  Token OK (Browse API)');
-            const demo = buildEbaySearchQueries('The Legend of Zelda', 'Nintendo Switch');
+            const demo = buildEbaySearchQueries('The Legend of Zelda', 'Switch');
             appendLog(`  Ejemplo variantes de búsqueda: ${demo.slice(0, 5).join(' · ')}`);
           } else {
             appendLog('  No se pudo obtener token (revisa ID/Secret del mismo keyset)');
@@ -829,6 +847,63 @@ export default function AjustesScreen() {
                   trackColor={{ false: '#333', true: 'rgba(0,127,255,0.35)' }}
                   thumbColor={coverPrefs.enabled[id] ? theme.colors.primary : '#888'}
                   accessibilityLabel={`Fuente ${COVER_PROVIDER_LABELS[id]}`}
+                />
+              </View>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.coverPrefSection}>
+          <Text style={styles.coverPrefSectionTitle}>Orden de fuentes (metadatos de ficha)</Text>
+          <Text style={styles.coverPrefSectionHint}>
+            Escáner, búsqueda manual y «Completar metadatos» prueban cada fuente activa en este orden. Las primeras tienen
+            prioridad si hay conflicto (p. ej. título y plataforma); las siguientes solo rellenan datos que falten.
+            GameplayStores no requiere clave. IGDB y ScreenScraper son opcionales: puedes desactivarlos si no quieres
+            usarlos o no tienes credenciales.
+          </Text>
+          {metadataPrefs.order.map((id, index) => (
+            <View key={id} style={styles.coverPrefRow}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={styles.coverPrefLabel}>{METADATA_PROVIDER_LABELS[id]}</Text>
+              </View>
+              <View style={styles.coverPrefControls}>
+                <TouchableOpacity
+                  onPress={() => void persistMetadataPrefs(moveMetadataProvider(metadataPrefs, id, 'up'))}
+                  disabled={index === 0}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Subir ${METADATA_PROVIDER_LABELS[id]}`}
+                >
+                  <Ionicons
+                    name="chevron-up"
+                    size={22}
+                    color={index === 0 ? '#333' : theme.colors.primary}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => void persistMetadataPrefs(moveMetadataProvider(metadataPrefs, id, 'down'))}
+                  disabled={index === metadataPrefs.order.length - 1}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Bajar ${METADATA_PROVIDER_LABELS[id]}`}
+                >
+                  <Ionicons
+                    name="chevron-down"
+                    size={22}
+                    color={index === metadataPrefs.order.length - 1 ? '#333' : theme.colors.primary}
+                  />
+                </TouchableOpacity>
+                <Switch
+                  value={metadataPrefs.enabled[id]}
+                  onValueChange={(v) =>
+                    void persistMetadataPrefs({
+                      ...metadataPrefs,
+                      enabled: { ...metadataPrefs.enabled, [id]: v },
+                    })
+                  }
+                  trackColor={{ false: '#333', true: 'rgba(0,127,255,0.35)' }}
+                  thumbColor={metadataPrefs.enabled[id] ? theme.colors.primary : '#888'}
+                  accessibilityLabel={`Metadatos: ${METADATA_PROVIDER_LABELS[id]}`}
                 />
               </View>
             </View>
@@ -990,7 +1065,7 @@ export default function AjustesScreen() {
         <ActionRow
           icon="document-text-outline"
           label="Documentación: portadas y fuentes"
-          hint="Cómo y por qué encadenamos GameplayStores, SteamGrid, IGDB y ScreenScraper"
+          hint="Portadas, metadatos (GameplayStores, IGDB…), valor y credenciales opcionales"
           onPress={() => router.push('/documentacion-fuentes')}
         />
       </View>
@@ -1025,16 +1100,15 @@ export default function AjustesScreen() {
             {/* IGDB */}
             <View style={styles.subsection}>
           <View style={styles.subsectionHeader}>
-            <Text style={styles.subsectionTitle}>IGDB — proveedor principal</Text>
+            <Text style={styles.subsectionTitle}>IGDB — datos extra de ficha</Text>
             <View style={styles.badge}>
               <Text style={styles.badgeText}>Recomendado</Text>
             </View>
           </View>
           <Text style={styles.sectionHint}>
-            El mismo que usa Playnite. Crea una app gratuita en dev.twitch.tv para obtener Client ID y Secret. El orden
-            de fuentes para la imagen del catálogo lo eliges arriba en «Orden de fuentes (portadas)»; por defecto:
-            GameplayStores → SteamGridDB → URL de portada IGDB → ScreenScraper. «Reintentar metadatos» no cambia
-            imágenes. Detalle en «Documentación: portadas y fuentes».
+            Opcional: sin IGDB puedes catalogar con GameplayStores (título, plataforma, a veces portada en el JSON). Con
+            Client ID y Secret de Twitch rellenas año, género, descripción, valoración, etc. El orden de metadatos y de
+            portadas lo configuras arriba en Catálogo. «Reintentar metadatos» no cambia imágenes.
           </Text>
           {field('Client ID *', 'igdbClientId', 'xxxxxxxxxxxxxxxx')}
           {field('Client Secret *', 'igdbClientSecret', 'xxxxxxxxxxxxxxxx', true)}
@@ -1064,14 +1138,14 @@ export default function AjustesScreen() {
         {/* ScreenScraper */}
         <View style={styles.subsection}>
           <View style={styles.subsectionHeader}>
-            <Text style={styles.subsectionTitle}>ScreenScraper — último recurso para portadas</Text>
+            <Text style={styles.subsectionTitle}>ScreenScraper — metadatos y portadas de respaldo</Text>
             <View style={styles.badgeOptional}>
               <Text style={styles.badgeOptionalText}>Opcional</Text>
             </View>
           </View>
           <Text style={styles.sectionHint}>
-            Tras GameplayStores (si aplica), SteamGridDB e IGDB. Cajas por plataforma si la API acepta tu cuenta (Dev ID /
-            Dev password del foro).
+            Si lo activas en «Orden de fuentes (metadatos)» o en portadas, se usa como capa extra. Usuario y contraseña
+            de screenscraper.fr; Dev ID / Dev password del foro mejoran límites.
           </Text>
           {field('Usuario', 'screenScraperUsername', 'tu-usuario')}
           {field('Password', 'screenScraperPassword', 'tu-password', true)}

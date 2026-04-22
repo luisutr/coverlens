@@ -26,12 +26,29 @@ vi.mock('../services/coverPreferenceResolver', () => ({
     })
   ),
 }));
-vi.mock('../services/utils/barcodeToTitle', () => ({
-  barcodeToTitle: vi.fn(),
+vi.mock('../services/utils/barcodeToTitle', async () => {
+  const actual = await vi.importActual<typeof import('../services/utils/barcodeToTitle')>(
+    '../services/utils/barcodeToTitle'
+  );
+  return { ...actual, barcodeToTitle: vi.fn() };
+});
+vi.mock('../services/providers/gameplayStoresCoverProvider', () => ({
+  findBestGameplayStoresProduct: vi.fn().mockResolvedValue(null),
+}));
+vi.mock('../services/metadataSourcePreferences', () => ({
+  loadMetadataSourcePreferences: vi.fn(async () => ({
+    order: ['gameplaystores', 'igdb', 'screenscraper'],
+    enabled: { gameplaystores: true, igdb: true, screenscraper: true },
+  })),
+}));
+vi.mock('../services/providers/gameplayStoresMetadataProvider', () => ({
+  resolveFromGameplayStoresMetadata: vi.fn().mockResolvedValue(null),
 }));
 
 import { resolvePreferredCoverUrl, resolvePreferredCoverWithSource } from '../services/coverPreferenceResolver';
 import { resolveMetadata } from '../services/metadataResolver';
+import { findBestGameplayStoresProduct } from '../services/providers/gameplayStoresCoverProvider';
+import { resolveFromGameplayStoresMetadata } from '../services/providers/gameplayStoresMetadataProvider';
 import { resolveFromIgdb } from '../services/providers/igdbProvider';
 import { resolveFromScreenScraper } from '../services/providers/screenScraperProvider';
 import { barcodeToTitle } from '../services/utils/barcodeToTitle';
@@ -39,6 +56,8 @@ import { barcodeToTitle } from '../services/utils/barcodeToTitle';
 describe('metadataResolver', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(findBestGameplayStoresProduct).mockResolvedValue(null);
+    vi.mocked(resolveFromGameplayStoresMetadata).mockResolvedValue(null);
     vi.mocked(resolvePreferredCoverUrl).mockImplementation(async (_t, _h, fb) => fb ?? null);
     vi.mocked(resolvePreferredCoverWithSource).mockImplementation(async (_t, _h, fb) => ({
       url: fb ?? null,
@@ -47,26 +66,29 @@ describe('metadataResolver', () => {
   });
 
   it('devuelve partial cuando GPS resuelve título pero providers fallan', async () => {
-    vi.mocked(resolveFromIgdb)
-      .mockResolvedValueOnce({
-        title: 'Juego 045496391256',
-        platform: 'Plataforma desconocida',
-        status: 'error',
-        source: 'igdb',
-        error: 'not_found',
-      })
-      .mockResolvedValueOnce({
-        title: 'Metroid Prime',
-        platform: 'Plataforma desconocida',
-        status: 'error',
-        source: 'igdb',
-        error: 'not_found',
-      });
-
-    vi.mocked(barcodeToTitle).mockResolvedValue({
+    vi.mocked(resolveFromGameplayStoresMetadata).mockResolvedValue({
       title: 'Metroid Prime',
-      platformHint: 'GameCube',
-      editionHint: "Player's Choice",
+      platform: 'GameCube',
+      version: "Player's Choice",
+      releaseYear: null,
+      genre: null,
+      developer: null,
+      publisher: null,
+      description: null,
+      rating: null,
+      franchise: null,
+      coverUrl: null,
+      headerImageUrl: null,
+      status: 'partial',
+      source: 'gameplaystores',
+    });
+
+    vi.mocked(resolveFromIgdb).mockResolvedValue({
+      title: 'Metroid Prime',
+      platform: 'Plataforma desconocida',
+      status: 'error',
+      source: 'igdb',
+      error: 'not_found',
     });
 
     vi.mocked(resolveFromScreenScraper).mockResolvedValue({
@@ -116,6 +138,44 @@ describe('metadataResolver', () => {
     expect(result.platform).toBe('PlayStation 2');
   });
 
+  it('GPS como primera capa enriquece titleHint para IGDB (manual + plataforma)', async () => {
+    vi.mocked(resolveFromGameplayStoresMetadata).mockResolvedValue({
+      title: 'Super Mario Bros',
+      platform: 'NES',
+      version: null,
+      releaseYear: null,
+      genre: null,
+      developer: null,
+      publisher: null,
+      description: null,
+      rating: null,
+      franchise: null,
+      coverUrl: null,
+      headerImageUrl: null,
+      status: 'partial',
+      source: 'gameplaystores',
+    });
+    vi.mocked(resolveFromIgdb).mockImplementation(async (input) => {
+      expect(input.titleHint).toBe('Super Mario Bros');
+      expect(input.platformHint).toBe('NES');
+      return {
+        title: 'Super Mario Bros',
+        platform: 'NES',
+        status: 'resolved',
+        source: 'igdb',
+        coverUrl: 'https://image.test/cover.jpg',
+        headerImageUrl: 'https://image.test/cover.jpg',
+        version: null,
+        genre: 'Platform',
+        releaseYear: 1985,
+      };
+    });
+
+    const result = await resolveMetadata({ titleHint: 'Mario Bros', platformHint: 'NES' });
+    expect(result.title).toBe('Super Mario Bros');
+    expect(resolveFromGameplayStoresMetadata).toHaveBeenCalled();
+  });
+
   it('mantiene resolved cuando IGDB devuelve metadata completa', async () => {
     vi.mocked(resolveFromIgdb).mockResolvedValue({
       title: 'Stellar Blade',
@@ -157,6 +217,42 @@ describe('metadataResolver', () => {
     const result = await resolveMetadata({ titleHint: 'X-Men Next Dimension', platformHint: 'PlayStation 2' });
     expect(result.coverUrl).toBe('https://media.gameplaystores.es/90759-thickbox_default/x-men.jpg');
     expect(result.headerImageUrl).toBe('https://images.igdb.com/igdb/image/upload/t_cover_big/co1.jpg');
+  });
+
+  it('recorre metadatos en orden: GameplayStores → IGDB → ScreenScraper', async () => {
+    const order: string[] = [];
+    vi.mocked(resolveFromGameplayStoresMetadata).mockImplementation(async () => {
+      order.push('gameplaystores');
+      return null;
+    });
+    vi.mocked(resolveFromIgdb).mockImplementation(async () => {
+      order.push('igdb');
+      return null;
+    });
+    vi.mocked(resolveFromScreenScraper).mockImplementation(async () => {
+      order.push('screenscraper');
+      return {
+        title: 'Capa SS',
+        platform: 'PlayStation 2',
+        version: null,
+        releaseYear: 2001,
+        genre: 'Action',
+        developer: null,
+        publisher: null,
+        description: null,
+        rating: null,
+        franchise: null,
+        coverUrl: null,
+        headerImageUrl: null,
+        status: 'partial',
+        source: 'screenscraper',
+      };
+    });
+
+    const result = await resolveMetadata({ titleHint: 'Capa SS', platformHint: 'PlayStation 2' });
+    expect(order).toEqual(['gameplaystores', 'igdb', 'screenscraper']);
+    expect(result.title).toBe('Capa SS');
+    expect(result.genre).toBe('Action');
   });
 
   it('con fetchCovers false no llama a la cadena de portada y omite URLs de imagen', async () => {

@@ -127,15 +127,21 @@ export type NewGameInput = {
   lastError?: string | null;
   favorite?: 0 | 1;
   discOnly?: 0 | 1;
+  valueCents?: number | null;
+  valueCurrency?: string | null;
+  valueSource?: ValueSource | null;
+  valueUpdatedAt?: string | null;
 };
 
 export async function addGame(input: NewGameInput): Promise<number> {
   const db = await getDb();
+  const now = new Date().toISOString();
   const result = await db.runAsync(
     `INSERT INTO games (
       title, barcode, platform, version, releaseYear, genre, developer, publisher,
-      description, rating, franchise, coverUrl, headerImageUrl, metadataStatus, metadataSource, lastError, favorite, discOnly
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      description, rating, franchise, coverUrl, headerImageUrl, metadataStatus, metadataSource, lastError, favorite, discOnly,
+      valueCents, valueCurrency, valueSource, valueUpdatedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     input.title, input.barcode ?? null, input.platform,
     input.version ?? null, input.releaseYear ?? null,
     input.genre ?? null, input.developer ?? null, input.publisher ?? null,
@@ -143,7 +149,11 @@ export async function addGame(input: NewGameInput): Promise<number> {
     input.coverUrl ?? null,
     input.headerImageUrl ?? null,
     input.metadataStatus ?? 'pending', input.metadataSource ?? null, input.lastError ?? null,
-    input.favorite ?? 0, input.discOnly ?? 0
+    input.favorite ?? 0, input.discOnly ?? 0,
+    input.valueCents ?? null,
+    input.valueCurrency ?? null,
+    input.valueSource ?? null,
+    input.valueUpdatedAt ?? (input.valueCents != null ? now : null)
   );
   return result.lastInsertRowId;
 }

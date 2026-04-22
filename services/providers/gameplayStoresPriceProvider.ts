@@ -11,8 +11,8 @@ import { findBestGameplayStoresProduct } from './gameplayStoresCoverProvider';
 export function parseGpsEuroPriceString(raw: string | undefined | null): { cents: number; currency: 'EUR' } | null {
   if (!raw || typeof raw !== 'string') return null;
   const s = raw.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
-  // "7,95 €" o "7.95 €"
-  const m = s.match(/(\d+)[.,](\d{2})/);
+  // "7,95 €", "7.95 €", "29'95 €" (tienda usa a veces ' como separador decimal)
+  const m = s.match(/(\d+)\s*[.,\u0027\u2019](\d{2})/);
   if (!m) return null;
   const euros = parseInt(m[1], 10);
   const centsPart = parseInt(m[2], 10);
@@ -26,6 +26,7 @@ export async function resolveRetailPriceFromGameplayStoresSearch(
   title: string,
   platformHint: string | null | undefined
 ): Promise<{ cents: number; currency: 'EUR' } | null> {
-  const p = await findBestGameplayStoresProduct(title, platformHint);
+  /** El listado a veces no trae `cover` pero sí `price`; no exigir imagen para cotizar. */
+  const p = await findBestGameplayStoresProduct(title, platformHint, { requireCover: false });
   return parseGpsEuroPriceString(p?.price);
 }

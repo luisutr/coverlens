@@ -2,13 +2,13 @@
 
 ## Es normal que sin credenciales veas menos cosas
 
-CoverLens guarda tu catálogo **en el móvil** y funciona sin cuentas externas, pero **metadatos enriquecidos** (género, año, descripciones, muchas portadas) y **cabeceras** anchas en la ficha dependen de servicios de terceros.
+CoverLens guarda tu catálogo **en el móvil**. Los **metadatos base** (título, plataforma, edición) pueden resolverse con **GameplayStores** sin ninguna clave. Para **más datos de ficha** (género, año, descripción, nota) y **más portadas**, puedes activar APIs opcionales.
 
 Si **no configuras** IGDB, SteamGridDB, ScreenScraper, etc.:
 
-- Puedes **añadir juegos** (escáner, título manual, import CSV/JSON).
-- Algunas **portadas** pueden salir igualmente (p. ej. cadena GameplayStores → otras fuentes según Ajustes), pero **habrá más huecos** o fichas «parciales».
-- **IGDB** es el que más completa la ficha de texto; sin él, «Actualizar ficha» y «Reintentar metadatos» harán menos.
+- Puedes **añadir juegos** (escáner, título manual, import CSV/JSON) y obtener título/plataforma desde GameplayStores cuando el listado lo tenga.
+- Las **portadas** siguen la cadena de Ajustes (GameplayStores, SteamGridDB…); puede haber más huecos sin SteamGridDB/IGDB.
+- **IGDB** completa mucho la parte de texto y cabeceras; sin él las fichas suelen quedar «parciales» hasta que haya portada + un dato extra (p. ej. edición desde GPS).
 
 **No es un fallo de la beta**: es el diseño (local-first + APIs opcionales).
 
@@ -18,13 +18,14 @@ Si **no configuras** IGDB, SteamGridDB, ScreenScraper, etc.:
 
 | Prioridad | Servicio | Para qué sirve |
 |-----------|----------|----------------|
-| **Muy recomendado (casi imprescindible para escáner)** | **IGDB** (vía Twitch) | Metadatos al leer códigos de barras, búsquedas, muchas fichas y cabeceras. |
+| **Sin clave** | **GameplayStores** | Metadatos de ficha por EAN o título+plataforma (orden en **«Orden de fuentes (metadatos)»**). |
+| **Muy recomendado** | **IGDB** (vía Twitch) | Año, género, descripción, nota, portada/cabecera IGDB cuando existan. |
 | **Recomendado** | **SteamGridDB** | Más aciertos en portadas/rejillas cuando el título no coincide a la primera. |
-| **Opcional** | **ScreenScraper** | Último recurso en la cadena de portadas para cajas «difíciles». |
+| **Opcional** | **ScreenScraper** | Metadatos y portadas de respaldo si lo activas en las cadenas de Ajustes. |
 | **Opcional** | **PriceCharting Pro** | Precio guía en USD en la ficha (requiere suscripción Pro con API). |
 | **Opcional** | **eBay Developers** | Mediana de anuncios activos (orientativo; no es precio de venta cerrada). |
 
-Puedes usar solo IGDB, o IGDB + SteamGridDB, y añadir el resto cuando quieras.
+Puedes dejar solo GameplayStores, o añadir IGDB + SteamGridDB, y activar ScreenScraper u otras cuando quieras (todo configurable por orden y interruptores en Ajustes → Catálogo).
 
 ---
 
@@ -39,7 +40,7 @@ Las claves se guardan en el dispositivo (almacenamiento seguro), no en nuestros 
 
 ---
 
-## 1. IGDB — Twitch Developer Console (muy recomendado)
+## 1. IGDB — Twitch Developer Console (muy recomendado, opcional)
 
 IGDB se usa con una **aplicación** creada en la consola de desarrollador de **Twitch** (gratis). La cuenta de Twitch es la misma que usarás en `dev.twitch.tv`.
 
@@ -127,9 +128,10 @@ No son necesarios para catalogar, escanear ni para la mayoría de portadas. Solo
 
 | Situación | Qué esperar |
 |-----------|--------------|
-| Sin ninguna API | Catálogo OK; menos metadatos y más portadas vacías |
-| Solo IGDB | Fichas de texto mucho mejores + portada/cabecera IGDB cuando existan |
-| IGDB + SteamGridDB (+ opcional ScreenScraper) | Mejor cobertura de portadas en el grid |
+| Sin ninguna API | Catálogo con GPS; fichas más «parciales» si falta portada o datos extra |
+| Solo GameplayStores (metadatos + portadas) | Título/plataforma desde tienda; portada si el JSON la trae |
+| + IGDB | Fichas de texto mucho mejores + portada/cabecera IGDB cuando existan |
+| + SteamGridDB (+ opcional ScreenScraper) | Mejor cobertura de portadas en el grid |
 | + PriceCharting y/o eBay | Valor orientativo en la ficha (opcional) |
 
 Cualquier duda sobre la beta, anótala con **pasos para reproducir** y modelo de móvil; eso ayuda mucho.

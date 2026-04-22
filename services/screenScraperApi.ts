@@ -37,7 +37,7 @@ const barcodeCatalog: Record<string, RecognizedGame> = {
   '045496744625': {
     title: 'The Legend of Zelda: Tears of the Kingdom',
     barcode: '045496744625',
-    platform: 'Nintendo Switch',
+    platform: 'Switch',
     version: 'PAL',
     releaseYear: 2023,
     genre: 'Action Adventure',

@@ -1,9 +1,12 @@
 import { loadCoverSourcePreferences } from './coverSourcePreferences';
+import { loadMetadataSourcePreferences } from './metadataSourcePreferences';
+import { mergeMetadataLayers, isUsableMetadataLayer } from './metadataLayerMerge';
 import { resolvePreferredCoverWithSource } from './coverPreferenceResolver';
+import { resolveFromGameplayStoresMetadata } from './providers/gameplayStoresMetadataProvider';
 import { resolveFromIgdb } from './providers/igdbProvider';
 import { resolveFromScreenScraper } from './providers/screenScraperProvider';
 import { finalizeMetadataResult } from './utils/metadataCompleteness';
-import { barcodeToTitle } from './utils/barcodeToTitle';
+import { canonicalizePlatform } from './utils/platformUtils';
 import { MetadataResult, ResolveInput } from './providers/types';
 import type { CoverSourcePreferences } from './coverSourcePreferences';
 
@@ -21,158 +24,128 @@ function omitImageFields(r: MetadataResult): Omit<MetadataResult, 'coverUrl' | '
   return rest;
 }
 
+function emptyRichMetadata(): Pick<
+  MetadataResult,
+  'version' | 'releaseYear' | 'genre' | 'developer' | 'publisher' | 'description' | 'rating' | 'franchise'
+> {
+  return {
+    version: null,
+    releaseYear: null,
+    genre: null,
+    developer: null,
+    publisher: null,
+    description: null,
+    rating: null,
+    franchise: null,
+  };
+}
+
 export async function resolveMetadata(input: ResolveInput): Promise<MetadataResult> {
   const fetchCovers = input.fetchCovers !== false;
-  let coverPrefs: CoverSourcePreferences | undefined;
-  if (fetchCovers) {
-    coverPrefs = await loadCoverSourcePreferences();
+  const [coverPrefs, metaPrefs] = await Promise.all([
+    fetchCovers ? loadCoverSourcePreferences() : Promise.resolve(undefined as CoverSourcePreferences | undefined),
+    loadMetadataSourcePreferences(),
+  ]);
+
+  let working: ResolveInput = { ...input };
+  let merged: MetadataResult | null = null;
+  let lastScreenScraperCover: string | null = null;
+
+  for (const id of metaPrefs.order) {
+    if (!metaPrefs.enabled[id]) continue;
+
+    let layer: MetadataResult | null = null;
+    if (id === 'gameplaystores') {
+      layer = await resolveFromGameplayStoresMetadata(working);
+    } else if (id === 'igdb') {
+      layer = await resolveFromIgdb(working);
+    } else if (id === 'screenscraper') {
+      layer = await resolveFromScreenScraper(working);
+      if (layer?.coverUrl?.trim()) lastScreenScraperCover = layer.coverUrl.trim();
+    }
+
+    if (!isUsableMetadataLayer(layer) || !layer) continue;
+
+    merged = mergeMetadataLayers(merged, layer);
+    working = {
+      ...working,
+      titleHint: merged.title,
+      platformHint: merged.platform,
+    };
   }
 
-  let enrichedInput = { ...input };
-  let editionHint: string | null = null;
-  let gpsFound = false;
+  if (!merged) {
+    const userTitle = (input.titleHint ?? '').trim();
+    const userPlatform = input.platformHint ?? null;
+    const fallbackTitle = userTitle || (input.barcode ? `Juego ${input.barcode}` : 'Juego desconocido');
 
-  if (input.barcode && !input.titleHint) {
-    const fromIgdbBarcode = await resolveFromIgdb({ barcode: input.barcode });
-    if (fromIgdbBarcode && fromIgdbBarcode.status !== 'error') {
-      if (!fetchCovers) {
-        return {
-          ...omitImageFields(fromIgdbBarcode),
-          status: fromIgdbBarcode.status,
-          source: fromIgdbBarcode.source,
-        } as unknown as MetadataResult;
-      }
-      const { url } = await resolvePreferredCoverWithSource(
-        fromIgdbBarcode.title,
-        input.platformHint,
-        fromIgdbBarcode.coverUrl,
-        coverPrefs
-      );
-      return finalizeMetadataResult({
-        ...fromIgdbBarcode,
-        coverUrl: url ?? null,
-      });
-    }
-
-    const barcodeResult = await barcodeToTitle(input.barcode);
-    if (barcodeResult) {
-      gpsFound = true;
-      enrichedInput = {
-        ...input,
-        titleHint: barcodeResult.title,
-        platformHint: input.platformHint ?? barcodeResult.platformHint,
-      };
-      editionHint = barcodeResult.editionHint;
-    }
-  }
-
-  const fromIgdb = await resolveFromIgdb(enrichedInput);
-  if (fromIgdb && fromIgdb.status !== 'error') {
-    if (!fetchCovers) {
-      const version = fromIgdb.version ?? editionHint ?? null;
-      return {
-        ...omitImageFields(fromIgdb),
-        status: fromIgdb.status,
-        source: fromIgdb.source,
-        version,
-      } as unknown as MetadataResult;
-    }
-    const { url } = await resolvePreferredCoverWithSource(
-      fromIgdb.title,
-      enrichedInput.platformHint,
-      fromIgdb.coverUrl,
-      coverPrefs
-    );
-    const version = fromIgdb.version ?? editionHint ?? null;
-    return finalizeMetadataResult({
-      ...fromIgdb,
-      coverUrl: url ?? null,
-      version,
-    });
-  }
-
-  const fromScreenScraper = await resolveFromScreenScraper(enrichedInput);
-  if (fromScreenScraper && fromScreenScraper.status !== 'error') {
-    if (!fetchCovers) {
-      const version = fromScreenScraper.version ?? editionHint ?? null;
-      return {
-        ...omitImageFields(fromScreenScraper),
-        status: fromScreenScraper.status,
-        source: fromScreenScraper.source,
-        version,
-      } as unknown as MetadataResult;
-    }
-    const { url } = await resolvePreferredCoverWithSource(
-      fromScreenScraper.title,
-      enrichedInput.platformHint,
-      fromScreenScraper.coverUrl,
-      coverPrefs
-    );
-    const version = fromScreenScraper.version ?? editionHint ?? null;
-    return finalizeMetadataResult({
-      ...fromScreenScraper,
-      coverUrl: url ?? null,
-      version,
-      ...headerPatchFromProviderCover(fromScreenScraper.coverUrl),
-    });
-  }
-
-  const bestError = fromIgdb ?? fromScreenScraper;
-  const fallbackTitle = enrichedInput.titleHint ?? (input.barcode ? `Juego ${input.barcode}` : 'Juego desconocido');
-  const userTitleForCover = (enrichedInput.titleHint ?? input.titleHint ?? '').trim();
-  const userPlatformForCover = enrichedInput.platformHint ?? input.platformHint ?? null;
-
-  if (fetchCovers && coverPrefs) {
-    const tryCoverFromFicha = () =>
-      userTitleForCover
-        ? resolvePreferredCoverWithSource(userTitleForCover, userPlatformForCover, null, coverPrefs).then((r) => r.url)
-        : Promise.resolve(null);
-
-    if (gpsFound && enrichedInput.titleHint) {
-      const coverUrl = await tryCoverFromFicha();
-      return finalizeMetadataResult({
-        title: fallbackTitle,
-        platform: enrichedInput.platformHint ?? 'Plataforma desconocida',
-        version: editionHint,
-        status: 'partial',
-        source: coverUrl ? 'cover_fallback' : 'local',
-        coverUrl: coverUrl ?? undefined,
-        error: coverUrl ? undefined : bestError?.error ?? 'igdb_not_found',
-      });
-    }
-
-    if (userTitleForCover) {
-      const coverUrl = await tryCoverFromFicha();
-      if (coverUrl) {
+    if (fetchCovers && coverPrefs && userTitle) {
+      const { url } = await resolvePreferredCoverWithSource(userTitle, userPlatform, null, coverPrefs);
+      if (url) {
         return finalizeMetadataResult({
           title: fallbackTitle,
-          platform: userPlatformForCover?.trim() || 'Plataforma desconocida',
-          version: editionHint,
+          platform: userPlatform?.trim() || 'Plataforma desconocida',
+          ...emptyRichMetadata(),
           status: 'partial',
           source: 'cover_fallback',
-          coverUrl,
+          coverUrl: url,
+          headerImageUrl: url,
+          error: undefined,
         });
       }
     }
-  } else {
-    if (gpsFound && enrichedInput.titleHint) {
-      return {
-        title: fallbackTitle,
-        platform: enrichedInput.platformHint ?? 'Plataforma desconocida',
-        version: editionHint,
+
+    /** Título + plataforma escritos pero ninguna fuente devolvió capa (p. ej. GPS sin coincidencia): al menos ficha mínima. */
+    if (userTitle && userPlatform?.trim()) {
+      return finalizeMetadataResult({
+        title: userTitle,
+        platform: canonicalizePlatform(userPlatform.trim()),
+        ...emptyRichMetadata(),
         status: 'partial',
         source: 'local',
-        error: bestError?.error ?? 'igdb_not_found',
-      };
+        coverUrl: null,
+        headerImageUrl: null,
+        error: undefined,
+      });
     }
+
+    return {
+      title: fallbackTitle,
+      platform: userPlatform?.trim() || 'Plataforma desconocida',
+      ...emptyRichMetadata(),
+      status: 'error',
+      source: 'local',
+      error: 'no_metadata_sources',
+    };
   }
 
-  return {
-    title: fallbackTitle,
-    platform: userPlatformForCover?.trim() || 'Plataforma desconocida',
-    version: editionHint,
-    status: 'error',
-    source: bestError?.source ?? 'local',
-    error: bestError?.error ?? 'fallback_local',
-  };
+  let withImages: MetadataResult = { ...merged };
+  if (lastScreenScraperCover && !/^https?:\/\//i.test(withImages.headerImageUrl?.trim() ?? '')) {
+    withImages = { ...withImages, ...headerPatchFromProviderCover(lastScreenScraperCover) };
+  }
+
+  if (!fetchCovers) {
+    const finalized = finalizeMetadataResult(withImages);
+    return {
+      ...omitImageFields(finalized),
+      status: finalized.status,
+      source: finalized.source,
+      error: finalized.error,
+    } as unknown as MetadataResult;
+  }
+
+  if (coverPrefs) {
+    const { url } = await resolvePreferredCoverWithSource(
+      withImages.title,
+      withImages.platform,
+      withImages.coverUrl,
+      coverPrefs
+    );
+    withImages = {
+      ...withImages,
+      coverUrl: url ?? withImages.coverUrl ?? null,
+    };
+  }
+
+  return finalizeMetadataResult(withImages);
 }

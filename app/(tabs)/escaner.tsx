@@ -22,6 +22,12 @@ import { theme } from '../../constants/theme';
 import { addGame, getGameByBarcode, initDatabase } from '../../database/dbConfig';
 import { resolveMetadata } from '../../services/metadataResolver';
 import { enqueueCoverThumbCache } from '../../services/storage/coverThumbCache';
+import { assessBarcode } from '../../services/utils/barcodeValidation';
+import {
+  canonicalizePlatform,
+  normalizeManualGameSearch,
+  splitTitleAndPlatform,
+} from '../../services/utils/platformUtils';
 import { advanceTourAfterBarcodeScan } from '../../services/firstRunTour';
 import { extractGameInfoFromOcr } from '../../services/utils/ocrParser';
 
@@ -60,6 +66,10 @@ export default function EscanerScreen() {
   const [notFoundModal, setNotFoundModal] = React.useState(false);
   const [notFoundBarcode, setNotFoundBarcode] = React.useState('');
   const [notFoundTitle, setNotFoundTitle] = React.useState('');
+  const [notFoundPlatform, setNotFoundPlatform] = React.useState('');
+
+  const [barcodeFixModal, setBarcodeFixModal] = React.useState(false);
+  const [barcodeFixValue, setBarcodeFixValue] = React.useState('');
 
   const isLikelyDuplicateError = (error: unknown) => {
     const msg = String(error).toLowerCase();
@@ -84,41 +94,58 @@ export default function EscanerScreen() {
     }
   }, [mode]);
 
-  // ─── BARCODE ────────────────────────────────────────────────────────────────
-  const onBarcodeScanned = React.useCallback(
-    async ({ data }: { data: string }) => {
-      const barcode = data.replace(/\s/g, '').replace(/[^0-9A-Za-z]/g, '');
-      if (!barcode || saving || mode !== 'barcode' || lastBarcode === barcode || scanLockRef.current) return;
-      scanLockRef.current = true;
+  const resetBarcodeScanGate = React.useCallback(() => {
+    scanLockRef.current = false;
+    setScannerEnabled(true);
+    setLastBarcode(null);
+  }, []);
+
+  const runBarcodeInsertFlow = React.useCallback(
+    async (barcode: string) => {
       setScannerEnabled(false);
+      scanLockRef.current = true;
       setSaving(true);
       setLastBarcode(barcode);
       try {
         await initDatabase();
         const existing = await getGameByBarcode(barcode);
-        if (existing) { router.replace('/'); return; }
+        if (existing) {
+          router.replace('/');
+          return;
+        }
         const resolved = await resolveMetadata({ barcode });
 
-        // Si no se encontró el juego, mostrar modal para que el usuario introduzca el título
         if (resolved.status === 'error') {
           setNotFoundBarcode(barcode);
           setNotFoundTitle('');
+          setNotFoundPlatform('');
           setNotFoundModal(true);
           setSaving(false);
           return;
         }
 
         const newId = await addGame({
-          title: resolved.title, barcode, platform: resolved.platform,
-          version: resolved.version, releaseYear: resolved.releaseYear,
-          genre: resolved.genre, developer: resolved.developer,
-          publisher: resolved.publisher, description: resolved.description,
-          rating: resolved.rating, franchise: resolved.franchise,
+          title: resolved.title,
+          barcode,
+          platform: resolved.platform,
+          version: resolved.version,
+          releaseYear: resolved.releaseYear,
+          genre: resolved.genre,
+          developer: resolved.developer,
+          publisher: resolved.publisher,
+          description: resolved.description,
+          rating: resolved.rating,
+          franchise: resolved.franchise,
           coverUrl: resolved.coverUrl ?? null,
           headerImageUrl: resolved.headerImageUrl ?? null,
-          metadataStatus: resolved.status, metadataSource: resolved.source,
+          metadataStatus: resolved.status,
+          metadataSource: resolved.source,
           lastError: resolved.error ?? null,
-          favorite: favorite ? 1 : 0, discOnly: discOnly ? 1 : 0,
+          favorite: favorite ? 1 : 0,
+          discOnly: discOnly ? 1 : 0,
+          valueCents: resolved.valueCents ?? null,
+          valueCurrency: resolved.valueCurrency ?? null,
+          valueSource: resolved.valueSource ?? null,
         });
         enqueueCoverThumbCache(newId, resolved.coverUrl ?? null);
         void advanceTourAfterBarcodeScan();
@@ -135,7 +162,62 @@ export default function EscanerScreen() {
         setSaving(false);
       }
     },
-    [discOnly, favorite, lastBarcode, mode, router, saving]
+    [discOnly, favorite, router]
+  );
+
+  const onConfirmBarcodeFix = React.useCallback(() => {
+    const fixed = barcodeFixValue.replace(/\s/g, '').replace(/[^0-9A-Za-z]/g, '');
+    if (!fixed) {
+      Alert.alert('Vacío', 'Escribe el código o cancela.');
+      return;
+    }
+    setBarcodeFixModal(false);
+    const a = assessBarcode(fixed);
+    if (!a.ok) {
+      Alert.alert('Código aún dudoso', a.message, [
+        {
+          text: 'Volver a editar',
+          style: 'cancel',
+          onPress: () => {
+            setBarcodeFixValue(fixed);
+            setBarcodeFixModal(true);
+          },
+        },
+        { text: 'Reescanear', onPress: resetBarcodeScanGate },
+        { text: 'Buscar así', style: 'destructive', onPress: () => void runBarcodeInsertFlow(fixed) },
+      ]);
+      return;
+    }
+    void runBarcodeInsertFlow(fixed);
+  }, [barcodeFixValue, resetBarcodeScanGate, runBarcodeInsertFlow]);
+
+  // ─── BARCODE ────────────────────────────────────────────────────────────────
+  const onBarcodeScanned = React.useCallback(
+    ({ data }: { data: string }) => {
+      const barcode = data.replace(/\s/g, '').replace(/[^0-9A-Za-z]/g, '');
+      if (!barcode || saving || mode !== 'barcode' || lastBarcode === barcode || scanLockRef.current) return;
+
+      const assessment = assessBarcode(barcode);
+      if (!assessment.ok) {
+        scanLockRef.current = true;
+        setScannerEnabled(false);
+        Alert.alert('Revisa el código de barras', assessment.message, [
+          { text: 'Reescanear', style: 'cancel', onPress: resetBarcodeScanGate },
+          {
+            text: 'Corregir',
+            onPress: () => {
+              setBarcodeFixValue(barcode);
+              setBarcodeFixModal(true);
+            },
+          },
+          { text: 'Usar igualmente', style: 'destructive', onPress: () => void runBarcodeInsertFlow(barcode) },
+        ]);
+        return;
+      }
+
+      void runBarcodeInsertFlow(barcode);
+    },
+    [lastBarcode, mode, resetBarcodeScanGate, runBarcodeInsertFlow, saving]
   );
 
   // ─── BARCODE NOT FOUND — guardar con título manual ────────────────────────
@@ -150,6 +232,7 @@ export default function EscanerScreen() {
       const resolved = await resolveMetadata({
         barcode: notFoundBarcode,
         titleHint: notFoundTitle.trim(),
+        platformHint: notFoundPlatform.trim() ? canonicalizePlatform(notFoundPlatform.trim()) : null,
       });
       const newId = await addGame({
         title: resolved.title, barcode: notFoundBarcode, platform: resolved.platform,
@@ -162,6 +245,9 @@ export default function EscanerScreen() {
         metadataStatus: resolved.status, metadataSource: resolved.source,
         lastError: resolved.error ?? null,
         favorite: favorite ? 1 : 0, discOnly: discOnly ? 1 : 0,
+        valueCents: resolved.valueCents ?? null,
+        valueCurrency: resolved.valueCurrency ?? null,
+        valueSource: resolved.valueSource ?? null,
       });
       enqueueCoverThumbCache(newId, resolved.coverUrl ?? null);
       void advanceTourAfterBarcodeScan();
@@ -175,7 +261,7 @@ export default function EscanerScreen() {
     } finally {
       setSaving(false);
     }
-  }, [discOnly, favorite, notFoundBarcode, notFoundTitle, router]);
+  }, [discOnly, favorite, notFoundBarcode, notFoundPlatform, notFoundTitle, router]);
 
   // ─── OCR ─────────────────────────────────────────────────────────────────────
   const onScanWithOcr = React.useCallback(async () => {
@@ -236,6 +322,9 @@ export default function EscanerScreen() {
         metadataStatus: resolved.status, metadataSource: resolved.source,
         lastError: resolved.error ?? null,
         favorite: favorite ? 1 : 0, discOnly: discOnly ? 1 : 0,
+        valueCents: resolved.valueCents ?? null,
+        valueCurrency: resolved.valueCurrency ?? null,
+        valueSource: resolved.valueSource ?? null,
       });
       enqueueCoverThumbCache(newId, resolved.coverUrl ?? null);
       void advanceTourAfterBarcodeScan();
@@ -253,11 +342,20 @@ export default function EscanerScreen() {
 
   // ─── MANUAL ──────────────────────────────────────────────────────────────────
   const onSaveManual = React.useCallback(async () => {
-    if (!rawTitle.trim()) { Alert.alert('Falta titulo', 'Escribe el titulo del juego.'); return; }
+    const combined = normalizeManualGameSearch(rawTitle.trim());
+    if (!combined) {
+      Alert.alert('Falta título', 'Escribe el título del juego (y la plataforma si puedes).');
+      return;
+    }
+    const { titleHint, platformHint } = splitTitleAndPlatform(combined);
+    if (!titleHint) {
+      Alert.alert('Falta título', 'Indica al menos el nombre del juego.');
+      return;
+    }
     setSaving(true);
     try {
       await initDatabase();
-      const resolved = await resolveMetadata({ titleHint: rawTitle.trim() });
+      const resolved = await resolveMetadata({ titleHint, platformHint });
       const newId = await addGame({
         title: resolved.title, barcode: null, platform: resolved.platform,
         version: resolved.version, releaseYear: resolved.releaseYear,
@@ -269,6 +367,9 @@ export default function EscanerScreen() {
         metadataStatus: resolved.status, metadataSource: resolved.source,
         lastError: resolved.error ?? null,
         favorite: favorite ? 1 : 0, discOnly: discOnly ? 1 : 0,
+        valueCents: resolved.valueCents ?? null,
+        valueCurrency: resolved.valueCurrency ?? null,
+        valueSource: resolved.valueSource ?? null,
       });
       enqueueCoverThumbCache(newId, resolved.coverUrl ?? null);
       void advanceTourAfterBarcodeScan();
@@ -343,7 +444,10 @@ export default function EscanerScreen() {
               )}
             </View>
           )}
-          <Text style={styles.helpText}>Acerca un código de barras (EAN/UPC). Se guarda automáticamente.</Text>
+          <Text style={styles.helpText}>
+            Acerca un código EAN/UPC (8, 12 o 13 dígitos). Validamos el código antes de guardar para evitar lecturas
+            erróneas.
+          </Text>
         </View>
       )}
 
@@ -393,7 +497,7 @@ export default function EscanerScreen() {
             style={styles.input}
             value={rawTitle}
             onChangeText={setRawTitle}
-            placeholder="Título del juego (ej: Gears of War)"
+            placeholder="Título y plataforma (ej: Gears of War Xbox 360)"
             placeholderTextColor={theme.colors.textDim}
             returnKeyType="search"
             onSubmitEditing={onSaveManual}
@@ -403,16 +507,19 @@ export default function EscanerScreen() {
             onPress={onSaveManual}
             disabled={saving || !rawTitle.trim()}
             accessibilityRole="button"
-            accessibilityLabel="Buscar manualmente en IGDB"
+            accessibilityLabel="Buscar por título y plataforma y guardar"
           >
             {saving ? <ActivityIndicator color="#fff" size="small" /> : (
               <>
                 <Ionicons name="search" size={18} color="#fff" />
-                <Text style={styles.actionBtnText}>Buscar en IGDB y guardar</Text>
+                <Text style={styles.actionBtnText}>Buscar y guardar</Text>
               </>
             )}
           </TouchableOpacity>
-          <Text style={styles.helpText}>Busca por título en IGDB y guarda con metadatos completos.</Text>
+          <Text style={styles.helpText}>
+            Escribe título y plataforma en la misma línea (GameplayStores / IGDB). Detectamos la plataforma al final del
+            texto cuando coincide con un nombre conocido (PS5, Xbox 360, etc.).
+          </Text>
         </View>
       )}
 
@@ -449,7 +556,9 @@ export default function EscanerScreen() {
                 <Text style={styles.modalSubtitle}>
                   {'Código '}
                   <Text style={{ color: theme.colors.primary, fontFamily: 'monospace' }}>{notFoundBarcode}</Text>
-                  {' escaneado pero no está en la base de datos.\nEscribe el título para buscarlo en IGDB.'}
+                  {
+                    ' escaneado pero no está en el catálogo.\nIndica título y, si puedes, plataforma (como en la tienda: «Juego - PS4»).'
+                  }
                 </Text>
 
                 <Text style={styles.modalLabel}>Título del juego</Text>
@@ -460,6 +569,16 @@ export default function EscanerScreen() {
                   placeholder="Ej: Metroid Prime"
                   placeholderTextColor={theme.colors.textDim}
                   autoFocus
+                  returnKeyType="next"
+                />
+
+                <Text style={styles.modalLabel}>Plataforma (opcional)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={notFoundPlatform}
+                  onChangeText={setNotFoundPlatform}
+                  placeholder="Ej: GameCube, Xbox 360, PS2…"
+                  placeholderTextColor={theme.colors.textDim}
                   returnKeyType="search"
                   onSubmitEditing={onConfirmNotFound}
                 />
@@ -477,12 +596,72 @@ export default function EscanerScreen() {
                     style={styles.modalConfirmBtn}
                     onPress={onConfirmNotFound}
                     accessibilityRole="button"
-                    accessibilityLabel="Buscar en IGDB"
+                    accessibilityLabel="Buscar con título y plataforma"
                   >
-                    <Text style={styles.modalConfirmText}>Buscar en IGDB</Text>
+                    <Text style={styles.modalConfirmText}>Buscar y guardar</Text>
                   </TouchableOpacity>
                 </View>
               </ScrollView>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Corregir código de barras (validación GTIN) */}
+      <Modal
+        visible={barcodeFixModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setBarcodeFixModal(false);
+          resetBarcodeScanGate();
+        }}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalBox}>
+              <Text style={styles.modalTitle}>Corregir código</Text>
+              <Text style={styles.modalSubtitle}>
+                EAN/UPC suele tener 8, 12 o 13 dígitos. Ajusta el número si la cámara leyó mal un dígito.
+              </Text>
+              <Text style={styles.modalLabel}>Código</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={barcodeFixValue}
+                onChangeText={setBarcodeFixValue}
+                placeholder="Solo números o código alfanumérico"
+                placeholderTextColor={theme.colors.textDim}
+                autoFocus
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="default"
+                returnKeyType="done"
+                onSubmitEditing={onConfirmBarcodeFix}
+              />
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalCancelBtn}
+                  onPress={() => {
+                    setBarcodeFixModal(false);
+                    resetBarcodeScanGate();
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancelar corrección de código"
+                >
+                  <Text style={styles.modalCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalConfirmBtn}
+                  onPress={onConfirmBarcodeFix}
+                  accessibilityRole="button"
+                  accessibilityLabel="Confirmar código corregido"
+                >
+                  <Text style={styles.modalConfirmText}>Continuar</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </KeyboardAvoidingView>

@@ -1,7 +1,7 @@
 import type { MetadataResult } from '../providers/types';
 
 /** Título genérico o desconocido: no cuenta como ficha completa. */
-function isPlaceholderTitle(title: string | null | undefined): boolean {
+export function isPlaceholderTitle(title: string | null | undefined): boolean {
   const t = title?.trim() ?? '';
   if (!t) return true;
   if (/^juego desconocido$/i.test(t)) return true;
@@ -31,6 +31,7 @@ function richFieldCount(fields: {
   developer?: string | null;
   publisher?: string | null;
   description?: string | null;
+  version?: string | null;
 }): number {
   let n = 0;
   if (fields.releaseYear != null && !Number.isNaN(Number(fields.releaseYear))) n++;
@@ -38,6 +39,7 @@ function richFieldCount(fields: {
   if ((fields.developer?.trim() ?? '').length > 0) n++;
   if ((fields.publisher?.trim() ?? '').length > 0) n++;
   if ((fields.description?.trim() ?? '').length > 24) n++;
+  if ((fields.version?.trim() ?? '').length > 0) n++;
   return n;
 }
 
@@ -50,6 +52,7 @@ export type GameFieldsForStatus = {
   developer?: string | null;
   publisher?: string | null;
   description?: string | null;
+  version?: string | null;
 };
 
 /**

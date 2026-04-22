@@ -15,7 +15,7 @@ const PLATFORM_PATTERNS: Array<{ pattern: RegExp; name: string }> = [
   { pattern: /xbox\s*one\b/i, name: 'Xbox One' },
   { pattern: /xbox\s*360\b/i, name: 'Xbox 360' },
   { pattern: /xbox\b/i, name: 'Xbox' },
-  { pattern: /nintendo\s*switch\b|switch\b/i, name: 'Nintendo Switch' },
+  { pattern: /nintendo\s*switch\b|switch\b/i, name: 'Switch' },
   { pattern: /wii\s*u\b/i, name: 'Wii U' },
   { pattern: /wii\b/i, name: 'Wii' },
   { pattern: /nintendo\s*3ds\b|3ds\b/i, name: 'Nintendo 3DS' },

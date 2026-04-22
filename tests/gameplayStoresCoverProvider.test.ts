@@ -4,7 +4,12 @@ vi.mock('../services/utils/networkUtils', () => ({
   fetchWithTimeout: vi.fn(),
 }));
 
-import { resolveCoverFromGameplayStoresSearch } from '../services/providers/gameplayStoresCoverProvider';
+import {
+  findBestGameplayStoresProduct,
+  resolveCoverFromGameplayStoresSearch,
+  scoreGpsListingForCatalog,
+} from '../services/providers/gameplayStoresCoverProvider';
+import { parseGamePlayStoresName } from '../services/utils/barcodeToTitle';
 import { fetchWithTimeout } from '../services/utils/networkUtils';
 
 function jsonResponse(obj: unknown): Response {
@@ -104,5 +109,56 @@ describe('resolveCoverFromGameplayStoresSearch', () => {
 
     const url = await resolveCoverFromGameplayStoresSearch('X-Men Next Dimension', 'PlayStation 2');
     expect(url).toBeNull();
+  });
+
+  it('con plataforma solo acepta listados con sufijo « - PLAT» (descarta enciclopedia sin plataforma)', async () => {
+    vi.mocked(fetchWithTimeout).mockResolvedValue(
+      jsonResponse({
+        products: [
+          {
+            name: 'Enciclopedia Super Mario Bros.',
+            cover: { large: { url: 'https://media.gameplaystores.es/bad.jpg' } },
+          },
+          {
+            name: 'Super Mario Bros (Cartucho) - NES',
+            cover: { large: { url: 'https://media.gameplaystores.es/good.jpg' } },
+          },
+        ],
+      })
+    );
+
+    const p = await findBestGameplayStoresProduct('Mario Bros', 'NES');
+    expect(p?.name).toBe('Super Mario Bros (Cartucho) - NES');
+  });
+
+  it('prefiere SMB original frente a SMB3 si la búsqueda no indica número', async () => {
+    vi.mocked(fetchWithTimeout).mockResolvedValue(
+      jsonResponse({
+        products: [
+          {
+            name: 'Super Mario Bros 3 (Cartucho) - NES',
+            cover: { large: { url: 'https://media.gameplaystores.es/3.jpg' } },
+          },
+          {
+            name: 'Super Mario Bros (Cartucho) - NES',
+            cover: { large: { url: 'https://media.gameplaystores.es/1.jpg' } },
+          },
+        ],
+      })
+    );
+
+    const p = await findBestGameplayStoresProduct('Mario Bros', 'NES');
+    expect(p?.name).toContain('Super Mario Bros (Cartucho)');
+    expect(p?.name).not.toContain('Bros 3');
+  });
+});
+
+describe('scoreGpsListingForCatalog', () => {
+  it('penaliza enciclopedias', () => {
+    const parsedGood = parseGamePlayStoresName('Super Mario Bros (Cartucho) - NES');
+    const parsedBad = parseGamePlayStoresName('Enciclopedia Super Mario Bros.');
+    const sGood = scoreGpsListingForCatalog('mario bros', 'Super Mario Bros (Cartucho) - NES', parsedGood);
+    const sBad = scoreGpsListingForCatalog('mario bros', 'Enciclopedia Super Mario Bros.', parsedBad);
+    expect(sGood).toBeGreaterThan(sBad);
   });
 });

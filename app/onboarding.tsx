@@ -13,13 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import {
-  ApiCredentials,
-  getApiCredentials,
-  hasIgdbConfigured,
-  providerLinks,
-  saveApiCredentials,
-} from '../services/credentialsStore';
+import { ApiCredentials, getApiCredentials, providerLinks, saveApiCredentials } from '../services/credentialsStore';
 import { completeFirstRunTour, enableFirstRunTour } from '../services/firstRunTour';
 import { setOnboardingDone } from '../services/onboardingState';
 
@@ -110,25 +104,6 @@ export default function OnboardingScreen() {
   }, [router]);
 
   const finish = React.useCallback(async () => {
-    if (!hasIgdbConfigured(form)) {
-      Alert.alert(
-        'Sin IGDB',
-        'Sin Client ID y Secret de IGDB, al escanear códigos de barras los metadatos suelen salir incompletos y las cabeceras de imagen peor. ¿Seguir igualmente?',
-        [
-          { text: 'Volver', style: 'cancel' },
-          {
-            text: 'Continuar',
-            onPress: async () => {
-              await saveApiCredentials(form);
-              await setOnboardingDone(true);
-              await enableFirstRunTour();
-              router.replace('/(tabs)/escaner');
-            },
-          },
-        ]
-      );
-      return;
-    }
     await saveApiCredentials(form);
     await setOnboardingDone(true);
     await enableFirstRunTour();
@@ -173,13 +148,14 @@ export default function OnboardingScreen() {
               barras o añade títulos a mano.
             </Text>
             <Text style={styles.heroBody}>
-              Algunas imágenes (p. ej. GameplayStores en la cadena de portadas) no necesitan cuenta. Para{' '}
-              <Text style={styles.heroEm}>códigos de barras y metadatos fiables</Text>, IGDB es la pieza más importante.
+              Los metadatos de ficha (título, plataforma, edición) se resuelven primero con{' '}
+              <Text style={styles.heroEm}>GameplayStores</Text> (sin cuenta), igual que en la tienda. IGDB y ScreenScraper
+              son opcionales: mejoran año, género, descripción y valoración cuando configures credenciales.
             </Text>
             <Text style={styles.heroBodyMuted}>
-              En los siguientes pasos podrás pegar claves opcionales que mejoran carátulas y fuentes de respaldo. Todo se
-              guarda en Ajustes y lo puedes cambiar cuando quieras. La cotización (PriceCharting / eBay) es totalmente
-              opcional y se configura después en Ajustes si la necesitas.
+              En Ajustes → Catálogo puedes ordenar y activar fuentes de metadatos y de portadas por separado. Los pasos
+              siguientes son claves opcionales (IGDB, SteamGridDB, ScreenScraper). La cotización (PriceCharting / eBay) se
+              configura después si la necesitas.
             </Text>
           </View>
         ) : null}
@@ -188,12 +164,12 @@ export default function OnboardingScreen() {
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <Text style={[styles.title, { fontFamily: 'Orbitron_700Bold' }]}>IGDB</Text>
-              <Badge label="Núcleo escáner" tone="core" />
+              <Badge label="Recomendado" tone="recommended" />
             </View>
             <Text style={styles.body}>
-              IGDB se accede con una aplicación en la consola de desarrollador de Twitch (gratis). Es lo que usa la app
-              para resolver título, plataforma y ficha al leer un código de barras, y para cabeceras oficiales cuando
-              aplica.
+              Opcional pero muy útil: con Client ID y Secret de Twitch (gratis) la app puede rellenar año de salida, género,
+              desarrollador, descripción y nota media. El escáner ya obtiene título y plataforma desde GameplayStores sin
+              IGDB; IGDB completa la ficha cuando lo actives en el orden de fuentes.
             </Text>
             <Text style={styles.stepsBlock}>
               {`1) Cuenta Twitch: si no tienes, crea una en twitch.tv (gratis).\n`}
@@ -231,7 +207,7 @@ export default function OnboardingScreen() {
               onPress={() =>
                 Alert.alert(
                   'Continuar sin IGDB',
-                  'Podrás configurarlo luego en Ajustes. El escáner y los metadatos funcionarán peor hasta que lo hagas.',
+                  'Podrás configurarlo luego en Ajustes. Seguirás pudiendo catalogar con GameplayStores; la ficha tendrá menos datos de texto hasta que añadas IGDB.',
                   [
                     { text: 'Cancelar', style: 'cancel' },
                     { text: 'Siguiente paso', onPress: goNext },
@@ -283,8 +259,8 @@ export default function OnboardingScreen() {
               <Badge label="Opcional" tone="optional" />
             </View>
             <Text style={styles.body}>
-              Último recurso en la cadena de portadas cuando otras fuentes no devuelven imagen. Solo necesario si quieres
-              exprimir al máximo las carátulas difíciles.
+              Opcional: capa extra en metadatos y en portadas si la activas en Ajustes. Útil cuando GameplayStores o
+              SteamGridDB no tienen el juego o quieres otra caja regional.
             </Text>
             <Text style={styles.stepsBlock}>
               {`1) Entra en screenscraper.fr y regístrate en el foro.\n`}

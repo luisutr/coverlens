@@ -17,6 +17,10 @@ export type MetadataResult = {
   status: MetadataStatus;
   source: string;
   error?: string;
+  /** Precio en tienda GameplayStores al importar (se guarda en `games.value*` si la BD lo admite). */
+  valueCents?: number | null;
+  valueCurrency?: string | null;
+  valueSource?: 'gameplaystores' | null;
 };
 
 export type ResolveInput = {

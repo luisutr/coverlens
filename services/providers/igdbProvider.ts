@@ -260,8 +260,8 @@ export async function resolveFromIgdb(input: ResolveInput): Promise<MetadataResu
   try {
     const token = await getAccessToken(credentials.igdbClientId, credentials.igdbClientSecret);
 
-    // 1. Si hay barcode (sin titleHint), intentar búsqueda directa por EAN en IGDB
-    if (input.barcode && !input.titleHint) {
+    // 1. Si hay barcode, intentar EAN en IGDB antes que la búsqueda por título (aunque ya venga hint de otra fuente).
+    if (input.barcode?.trim()) {
       const byBarcode = await resolveByBarcode(input.barcode, credentials.igdbClientId, token, fallbackTitle);
       if (byBarcode) return byBarcode;
     }

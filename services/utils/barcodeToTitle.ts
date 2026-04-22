@@ -37,8 +37,8 @@ const PLATFORM_SUFFIX_MAP: Array<{ suffixes: string[]; platform: string }> = [
   { suffixes: ['XBONE', 'XBOX ONE'], platform: 'Xbox One' },
   { suffixes: ['X360', 'XBOX 360'], platform: 'Xbox 360' },
   { suffixes: ['XBOX'], platform: 'Xbox' },
-  { suffixes: ['SWI2', 'SWITCH 2', 'NINTENDO SWITCH 2'], platform: 'Nintendo Switch 2' },
-  { suffixes: ['SWI', 'SWITCH', 'NINTENDO SWITCH'], platform: 'Nintendo Switch' },
+  { suffixes: ['SWI2', 'SWITCH 2', 'NINTENDO SWITCH 2'], platform: 'Switch 2' },
+  { suffixes: ['SWI', 'SWITCH', 'NINTENDO SWITCH'], platform: 'Switch' },
   { suffixes: ['WIIU', 'WII U', 'NINTENDO WIIU'], platform: 'Wii U' },
   { suffixes: ['WII', 'NINTENDO WII'], platform: 'Wii' },
   { suffixes: ['3DS', 'NINTENDO 3DS', '2DS'], platform: 'Nintendo 3DS' },
@@ -48,7 +48,7 @@ const PLATFORM_SUFFIX_MAP: Array<{ suffixes: string[]; platform: string }> = [
   { suffixes: ['GB', 'GAME BOY', 'GAMEBOY'], platform: 'Game Boy' },
   { suffixes: ['GC', 'NGC', 'GAMECUBE', 'GAME CUBE'], platform: 'GameCube' },
   { suffixes: ['N64', 'NINTENDO 64'], platform: 'Nintendo 64' },
-  { suffixes: ['SNES', 'SUPER NES', 'SUPER NINTENDO'], platform: 'Super Nintendo' },
+  { suffixes: ['SNES', 'SUPER NES', 'SUPER NINTENDO'], platform: 'SNES' },
   { suffixes: ['NES'], platform: 'NES' },
   { suffixes: ['DC', 'DREAMCAST'], platform: 'Dreamcast' },
   { suffixes: ['SAT', 'SATURN', 'SEGA SATURN'], platform: 'Saturn' },
@@ -82,11 +82,15 @@ const EDITION_LABELS: Array<{ pattern: RegExp; label: string | null }> = [
   { pattern: /\s*\(Day\s+One\s+Edition\)/gi, label: 'Day One Edition' },
   { pattern: /\s*\(Standard\s+Edition\)/gi, label: 'Standard Edition' },
   { pattern: /\s*\(Digital\s+Edition\)/gi, label: 'Digital Edition' },
-  // ── Notas de condición entre paréntesis (se eliminan sin guardar edición) ─
+  // ── Notas de condición / formato GPS (se eliminan; no son el título IGDB) ─
+  { pattern: /\s*\(Cartucho\)/gi, label: null },
+  { pattern: /\s*\(Caja\s+Pequeña[^)]*\)/gi, label: null },
+  { pattern: /\s*\(Caja\s+Deteriorada[^)]*\)/gi, label: null },
+  { pattern: /\s*\(NTSC[^)]*\)/gi, label: null },
   { pattern: /\s*\(Manual\s+Deteriorado\)/gi, label: null },
   { pattern: /\s*\(Sin\s+Manual\)/gi, label: null },
   { pattern: /\s*\(Sin\s+Caja\)/gi, label: null },
-  { pattern: /\s*\(Caja\s+Deteriorada\)/gi, label: null },
+  { pattern: /\s*\(Sin\s+Insert\)/gi, label: null },
   { pattern: /\s*\(Caja\s+Dañada\)/gi, label: null },
   { pattern: /\s*\(Seminuevo\)/gi, label: null },
   { pattern: /\s*\(Import\.?\)/gi, label: null },
@@ -170,7 +174,7 @@ function isValidEan13(barcode: string): boolean {
  * - Si el EAN-13 (original o paddeado) tiene checksum inválido,
  *   prueba cambiar cada dígito (pos 0-11) del 0 al 9 hasta encontrar checksums válidos
  */
-function getBarcodeVariants(barcode: string): string[] {
+export function getBarcodeVariants(barcode: string): string[] {
   const variants: string[] = [barcode];
   const ean13Candidates: string[] = [];
 
@@ -259,6 +263,62 @@ async function fromGameUpc(barcode: string): Promise<BarcodeResult | null> {
   } catch {
     return null;
   }
+}
+
+/** Primer producto del JSON GPS para un EAN/UPC (portada en JSON si existe). */
+export async function fetchFirstGpsProductForBarcode(barcode: string): Promise<{
+  name: string;
+  price?: string;
+  url?: string;
+  link?: string;
+  canonical_url?: string;
+  id_product?: string | number;
+  cover?: { large?: { url?: string }; medium?: { url?: string }; small?: { url?: string }; bySize?: Record<string, { url?: string } | undefined> };
+} | null> {
+  const clean = barcode.replace(/\s/g, '');
+  const variants = getBarcodeVariants(clean);
+
+  for (const code of variants) {
+    try {
+      const res = await fetchWithTimeout(`${GAMEPLAYSTORES_URL}?s=${encodeURIComponent(code)}`, {
+        headers: { Accept: 'application/json' },
+      }, 10000);
+      if (!res.ok) continue;
+      const text = await res.text();
+      if (!text.trim().startsWith('{')) continue;
+      const data = JSON.parse(text) as {
+        products?: Array<{
+          name?: string;
+          price?: string;
+          url?: string;
+          link?: string;
+          canonical_url?: string;
+          id_product?: string | number;
+          cover?: {
+            large?: { url?: string };
+            medium?: { url?: string };
+            small?: { url?: string };
+            bySize?: Record<string, { url?: string } | undefined>;
+          };
+        }>;
+      };
+      const first = data.products?.[0];
+      if (first?.name) {
+        return {
+          name: first.name,
+          cover: first.cover,
+          price: first.price,
+          url: first.url,
+          link: first.link,
+          canonical_url: first.canonical_url,
+          id_product: first.id_product,
+        };
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 // ─── Entry point ─────────────────────────────────────────────────────────────
