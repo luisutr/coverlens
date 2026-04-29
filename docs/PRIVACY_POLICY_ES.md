@@ -4,9 +4,11 @@ Ultima actualizacion: 2026-04-29
 
 ## 1. Responsable
 
+Responsable del proyecto: Luis Utrilla del Castillo.
+
 CoverLens es una app de catalogacion de videojuegos.
 
-Contacto: añadir email de soporte oficial antes de publicar (ejemplo: soporte@tudominio.com).
+Contacto de privacidad y soporte: luisutr+coverlens@gmail.com.
 
 ## 2. Que datos trata la app
 
