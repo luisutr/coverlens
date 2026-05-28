@@ -6,11 +6,17 @@ import * as SecureStore from 'expo-secure-store';
 
 const STORAGE_KEY = 'coverlens_metadata_source_prefs_v1';
 
-export type MetadataProviderId = 'gameplaystores' | 'igdb' | 'screenscraper';
+export type MetadataProviderId = 'coverlens' | 'gameplaystores' | 'igdb' | 'screenscraper';
 
-export const ALL_METADATA_PROVIDER_IDS: MetadataProviderId[] = ['gameplaystores', 'igdb', 'screenscraper'];
+export const ALL_METADATA_PROVIDER_IDS: MetadataProviderId[] = [
+  'coverlens',
+  'gameplaystores',
+  'igdb',
+  'screenscraper',
+];
 
 export const METADATA_PROVIDER_LABELS: Record<MetadataProviderId, string> = {
+  coverlens: 'CoverLens Resource',
   gameplaystores: 'GameplayStores (listado tienda, sin clave)',
   igdb: 'IGDB (Twitch — ficha y datos extra)',
   screenscraper: 'ScreenScraper (usuario/contraseña)',
@@ -24,6 +30,7 @@ export type MetadataSourcePreferences = {
 export const DEFAULT_METADATA_SOURCE_PREFERENCES: MetadataSourcePreferences = {
   order: [...ALL_METADATA_PROVIDER_IDS],
   enabled: {
+    coverlens: true,
     gameplaystores: true,
     igdb: true,
     screenscraper: true,

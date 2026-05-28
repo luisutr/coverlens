@@ -5,6 +5,7 @@ import { addGame, getGames, initDatabase } from '../database/dbConfig';
 import { emitCatalogRefresh } from '../services/catalogRefreshBus';
 import { advanceTourAfterBarcodeScan } from '../services/firstRunTour';
 import { resolveMetadata } from '../services/metadataResolver';
+import { newGameFieldsFromMetadata } from '../services/utils/metadataToGameInput';
 import { enqueueCoverThumbCache } from '../services/storage/coverThumbCache';
 import { getApiCredentials } from '../services/credentialsStore';
 import { extractShelfGamesWithGemini, extractSingleLomoWithGemini } from '../services/geminiVisionShelf';
@@ -221,29 +222,12 @@ export function CatalogOcrFlowProvider({ children }: { children: React.ReactNode
         titleHint: singleReview.title.trim(),
         platformHint: singleReview.platform.trim() || null,
       });
-      const newId = await addGame({
-        title: resolved.title,
-        barcode: null,
-        platform: resolved.platform,
-        version: resolved.version,
-        releaseYear: resolved.releaseYear,
-        genre: resolved.genre,
-        developer: resolved.developer,
-        publisher: resolved.publisher,
-        description: resolved.description,
-        rating: resolved.rating,
-        franchise: resolved.franchise,
-        coverUrl: resolved.coverUrl ?? null,
-        headerImageUrl: resolved.headerImageUrl ?? null,
-        metadataStatus: resolved.status,
-        metadataSource: resolved.source,
-        lastError: resolved.error ?? null,
-        favorite: singleReview.favorite,
-        discOnly: singleReview.discOnly,
-        valueCents: resolved.valueCents ?? null,
-        valueCurrency: resolved.valueCurrency ?? null,
-        valueSource: resolved.valueSource ?? null,
-      });
+      const newId = await addGame(
+        newGameFieldsFromMetadata(resolved, {
+          favorite: singleReview.favorite,
+          discOnly: singleReview.discOnly,
+        })
+      );
       enqueueCoverThumbCache(newId, resolved.coverUrl ?? null);
       void advanceTourAfterBarcodeScan();
       setSingleReview(null);
@@ -323,29 +307,14 @@ export function CatalogOcrFlowProvider({ children }: { children: React.ReactNode
             skipped++;
             continue;
           }
-          const newId = await addGame({
-            title: safeTitle,
-            barcode: null,
-            platform: safePlatform,
-            version: resolved.version,
-            releaseYear: resolved.releaseYear,
-            genre: resolved.genre,
-            developer: resolved.developer,
-            publisher: resolved.publisher,
-            description: resolved.description,
-            rating: resolved.rating,
-            franchise: resolved.franchise,
-            coverUrl: resolved.coverUrl ?? null,
-            headerImageUrl: resolved.headerImageUrl ?? null,
-            metadataStatus: resolved.status,
-            metadataSource: resolved.source,
-            lastError: resolved.error ?? null,
-            favorite,
-            discOnly,
-            valueCents: resolved.valueCents ?? null,
-            valueCurrency: resolved.valueCurrency ?? null,
-            valueSource: resolved.valueSource ?? null,
-          });
+          const newId = await addGame(
+            newGameFieldsFromMetadata(resolved, {
+              title: safeTitle,
+              platform: safePlatform,
+              favorite,
+              discOnly,
+            })
+          );
           enqueueCoverThumbCache(newId, resolved.coverUrl ?? null);
           existing.add(postKey);
           added++;

@@ -6,6 +6,7 @@ import {
   Alert,
   Dimensions,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -35,13 +36,22 @@ import {
   isFirstRunTourActive,
 } from '../../services/firstRunTour';
 import { loadCoverSourcePreferences } from '../../services/coverSourcePreferences';
+import { loadMetadataSourcePreferences } from '../../services/metadataSourcePreferences';
 import { loadValueSourcePreferences } from '../../services/valueSourcePreferences';
 import { resolveValueEstimateFromPreferences } from '../../services/valuePreferenceResolver';
 import { resolvePreferredCoverWithSource } from '../../services/coverPreferenceResolver';
 import { resolveMetadata } from '../../services/metadataResolver';
 import { resolveFromIgdb } from '../../services/providers/igdbProvider';
-import { inferCoverSourceLabel } from '../../services/utils/coverUrlSource';
 import { deriveMetadataStatusFromGameFields } from '../../services/utils/metadataCompleteness';
+import {
+  formatCoverProviderLabel,
+  formatMetadataSourceLabel,
+  formatValueSourceLabel,
+  inferImageSourceLabel,
+  resolveImageSourceUrl,
+  resolveMetadataSourceUrl,
+  resolveValueSourceUrl,
+} from '../../services/utils/sourceLabels';
 import { getIgdbImageRequestHeaders } from '../../services/igdbImageRequest';
 import { enqueueCoverThumbCache } from '../../services/storage/coverThumbCache';
 import { formatMoneyMinor, parseMoneyInputToMinor } from '../../services/utils/moneyFormat';
@@ -52,7 +62,7 @@ const COVER_HEIGHT = Math.round(SCREEN_W * 0.55);
 const STATUS_COLOR: Record<string, string> = {
   pending: '#aaaaaa',
   resolved: '#40d67b',
-  partial: '#f1c40f',
+  partial: '#f39c12',
   error: '#ff6b6b',
 };
 
@@ -69,6 +79,8 @@ type EditForm = {
   /** Cabecera ancha en ficha (opcional); catálogo usa solo coverUrl */
   headerImageUrl: string;
   description: string;
+  textLanguages: string;
+  voiceLanguages: string;
   valueAmount: string;
   valueCurrency: 'EUR' | 'USD';
 };
@@ -87,8 +99,19 @@ export default function GameDetailScreen() {
   const [form, setForm] = React.useState<EditForm>({
     title: '', platform: '', version: '', releaseYear: '',
     genre: '', developer: '', publisher: '', barcode: '', coverUrl: '', headerImageUrl: '', description: '',
+    textLanguages: '', voiceLanguages: '',
     valueAmount: '', valueCurrency: 'EUR',
   });
+
+  const openSourceLink = React.useCallback(async (url: string | null | undefined) => {
+    const target = url?.trim() ?? '';
+    if (!target) return;
+    try {
+      await Linking.openURL(target);
+    } catch {
+      Alert.alert('No se pudo abrir', 'No se pudo abrir el enlace de la fuente.');
+    }
+  }, []);
 
   const loadGame = React.useCallback(async () => {
     await initDatabase();
@@ -132,6 +155,8 @@ export default function GameDetailScreen() {
       coverUrl: game.coverUrl ?? '',
       headerImageUrl: game.headerImageUrl ?? '',
       description: game.description ?? '',
+      textLanguages: game.textLanguages ?? '',
+      voiceLanguages: game.voiceLanguages ?? '',
       valueAmount:
         game.valueCents != null && game.valueCurrency
           ? (game.valueCents / 100).toFixed(2)
@@ -174,6 +199,8 @@ export default function GameDetailScreen() {
         developer: form.developer.trim() || null,
         publisher: form.publisher.trim() || null,
         description: form.description.trim() || null,
+        textLanguages: form.textLanguages.trim() || null,
+        voiceLanguages: form.voiceLanguages.trim() || null,
         rating: game.rating,
         franchise: game.franchise,
         coverUrl: form.coverUrl.trim() || null,
@@ -263,6 +290,8 @@ export default function GameDetailScreen() {
         developer: resolved.developer ?? game.developer,
         publisher: resolved.publisher ?? game.publisher,
         description: resolved.description ?? game.description,
+        textLanguages: resolved.textLanguages ?? game.textLanguages,
+        voiceLanguages: resolved.voiceLanguages ?? game.voiceLanguages,
         rating: resolved.rating ?? game.rating,
         franchise: resolved.franchise ?? game.franchise,
         coverUrl: game.coverUrl,
@@ -299,7 +328,10 @@ export default function GameDetailScreen() {
     if (!game) return;
     setCoverRefreshing(true);
     try {
-      const coverPrefs = await loadCoverSourcePreferences();
+      const [coverPrefs, metadataPrefs] = await Promise.all([
+        loadCoverSourcePreferences(),
+        loadMetadataSourcePreferences(),
+      ]);
       const { url, source } = await resolvePreferredCoverWithSource(
         game.title,
         game.platform,
@@ -308,15 +340,20 @@ export default function GameDetailScreen() {
       );
 
       let nextHeader = game.headerImageUrl;
-      const creds = await getApiCredentials();
-      if (creds.igdbClientId?.trim() && creds.igdbClientSecret?.trim()) {
-        const igdb = await resolveFromIgdb({
-          titleHint: game.title,
-          platformHint: game.platform,
-          yearHint: game.releaseYear ?? undefined,
-        });
-        if (igdb && igdb.status !== 'error' && igdb.headerImageUrl?.trim()) {
-          nextHeader = igdb.headerImageUrl.trim();
+      let headerSourceId: string | null = null;
+      const igdbEnabledForHeader = metadataPrefs.enabled.igdb;
+      if (igdbEnabledForHeader) {
+        const creds = await getApiCredentials();
+        if (creds.igdbClientId?.trim() && creds.igdbClientSecret?.trim()) {
+          const igdb = await resolveFromIgdb({
+            titleHint: game.title,
+            platformHint: game.platform,
+            yearHint: game.releaseYear ?? undefined,
+          });
+          if (igdb && igdb.status !== 'error' && igdb.headerImageUrl?.trim()) {
+            nextHeader = igdb.headerImageUrl.trim();
+            headerSourceId = 'igdb';
+          }
         }
       }
 
@@ -329,6 +366,8 @@ export default function GameDetailScreen() {
         developer: game.developer,
         publisher: game.publisher,
         description: game.description,
+        textLanguages: game.textLanguages,
+        voiceLanguages: game.voiceLanguages,
         rating: game.rating,
         franchise: game.franchise,
         coverUrl: url ?? game.coverUrl,
@@ -349,13 +388,22 @@ export default function GameDetailScreen() {
       }
 
       const headerCambiada = nextHeader !== game.headerImageUrl;
+      const catalogLabel = url ? formatCoverProviderLabel(source) : null;
+      const headerLabel = headerCambiada ? formatCoverProviderLabel(headerSourceId) : null;
+
       if (!url && !headerCambiada) {
-        Alert.alert('Portadas', 'No se encontró imagen de catálogo ni cabecera nueva (revisa credenciales IGDB si quieres la cabecera).');
+        Alert.alert(
+          'Portadas',
+          igdbEnabledForHeader
+            ? 'No se encontró imagen nueva con las fuentes activas en Ajustes.'
+            : 'No se encontró imagen de catálogo. La cabecera ancha (IGDB) solo se busca si IGDB está activo en fuentes de metadatos.'
+        );
       } else {
         const lineas: string[] = [];
-        if (url) lineas.push(`Catálogo: ${source ?? 'fuente desconocida'}.`);
-        else lineas.push('Catálogo: sin cambios.');
-        if (headerCambiada) lineas.push('Cabecera: actualizada (IGDB).');
+        if (url) lineas.push(`Catálogo · ${catalogLabel ?? 'fuente desconocida'}`);
+        else lineas.push('Catálogo · sin cambios');
+        if (headerCambiada) lineas.push(`Cabecera · ${headerLabel ?? 'IGDB'}`);
+        else if (game.headerImageUrl?.trim()) lineas.push('Cabecera · sin cambios');
         Alert.alert('Portadas', lineas.join('\n'));
       }
     } catch {
@@ -385,8 +433,14 @@ export default function GameDetailScreen() {
     );
   }
 
-  const coverSourceLabel = inferCoverSourceLabel(game.coverUrl);
-  const headerSourceLabel = inferCoverSourceLabel(game.headerImageUrl ?? null);
+  const metadataSourceLabel = formatMetadataSourceLabel(game.metadataSource);
+  const metadataSourceUrl = resolveMetadataSourceUrl(game.metadataSource);
+  const coverSourceLabel = inferImageSourceLabel(game.coverUrl);
+  const coverSourceUrl = resolveImageSourceUrl(game.coverUrl);
+  const headerSourceLabel = inferImageSourceLabel(game.headerImageUrl ?? null);
+  const headerSourceUrl = resolveImageSourceUrl(game.headerImageUrl);
+  const valueSourceLabel = formatValueSourceLabel(game.valueSource);
+  const valueSourceUrl = resolveValueSourceUrl(game.valueSource);
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -434,17 +488,47 @@ export default function GameDetailScreen() {
                 <View style={[styles.statusDot, { backgroundColor: STATUS_COLOR[game.metadataStatus] ?? '#aaa' }]} />
                 <Text style={styles.statusLabel}>{game.metadataStatus.toUpperCase()}</Text>
               </View>
-              {game.metadataSource ? (
-                <Text style={styles.sourceLabel}>Ficha · {game.metadataSource}</Text>
+              {metadataSourceLabel ? (
+                <TouchableOpacity
+                  onPress={() => void openSourceLink(metadataSourceUrl)}
+                  disabled={!metadataSourceUrl}
+                >
+                  <Text style={[styles.sourceLabel, metadataSourceUrl ? styles.sourceLink : null]}>
+                    Ficha · {metadataSourceLabel}
+                  </Text>
+                </TouchableOpacity>
               ) : null}
               {game.headerImageUrl?.trim() && headerSourceLabel ? (
-                <Text style={styles.sourceLabel}>Cabecera · {headerSourceLabel}</Text>
+                <TouchableOpacity
+                  onPress={() => void openSourceLink(headerSourceUrl)}
+                  disabled={!headerSourceUrl}
+                >
+                  <Text style={[styles.sourceLabel, headerSourceUrl ? styles.sourceLink : null]}>
+                    Cabecera · {headerSourceLabel}
+                  </Text>
+                </TouchableOpacity>
               ) : null}
               {coverSourceLabel ? (
-                <Text style={styles.sourceLabel}>
-                  {game.headerImageUrl?.trim() ? 'Catálogo · ' : 'Portada · '}
-                  {coverSourceLabel}
-                </Text>
+                <TouchableOpacity
+                  onPress={() => void openSourceLink(coverSourceUrl)}
+                  disabled={!coverSourceUrl}
+                >
+                  <Text style={[styles.sourceLabel, coverSourceUrl ? styles.sourceLink : null]}>
+                    {game.headerImageUrl?.trim() ? 'Catálogo · ' : 'Portada · '}
+                    {coverSourceLabel}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+              {valueSourceLabel ? (
+                <TouchableOpacity
+                  onPress={() => void openSourceLink(valueSourceUrl)}
+                  disabled={!valueSourceUrl}
+                >
+                  <Text style={[styles.sourceLabel, valueSourceUrl ? styles.sourceLink : null]}>
+                    Valor · {valueSourceLabel}
+                    {game.valueUpdatedAt ? ` · ${new Date(game.valueUpdatedAt).toLocaleDateString('es-ES')}` : ''}
+                  </Text>
+                </TouchableOpacity>
               ) : null}
             </View>
             {!editing ? (
@@ -497,6 +581,16 @@ export default function GameDetailScreen() {
                 />
                 <EditField label="Descripcion" value={form.description ?? ''} onChange={(v) => setForm((f) => ({ ...f, description: v }))} multiline />
                 <EditField
+                  label="Idiomas texto (menus/subtitulos)"
+                  value={form.textLanguages}
+                  onChange={(v) => setForm((f) => ({ ...f, textLanguages: v }))}
+                />
+                <EditField
+                  label="Idiomas voz (doblaje)"
+                  value={form.voiceLanguages}
+                  onChange={(v) => setForm((f) => ({ ...f, voiceLanguages: v }))}
+                />
+                <EditField
                   label="Valor estimado (opcional)"
                   value={form.valueAmount}
                   keyboardType="numeric"
@@ -523,6 +617,8 @@ export default function GameDetailScreen() {
                 <Field label="Genero" value={game.genre} />
                 <Field label="Desarrollador" value={game.developer} />
                 <Field label="Publisher" value={game.publisher} />
+                <Field label="Texto" value={game.textLanguages} />
+                <Field label="Voces" value={game.voiceLanguages} />
                 <Field label="Franquicia" value={game.franchise} />
                 {game.rating != null && <Field label="Puntuacion" value={`${game.rating}/100`} />}
                 <Field label="Barcode" value={game.barcode} />
@@ -542,23 +638,11 @@ export default function GameDetailScreen() {
               <Text style={styles.valueBig}>
                 {formatMoneyMinor(game.valueCents ?? null, game.valueCurrency ?? null) ?? '—'}
               </Text>
-              {game.valueSource ? (
-                <Text style={styles.valueHint}>
-                  Fuente:{' '}
-                  {game.valueSource === 'gameplaystores'
-                    ? 'GameplayStores (precio en tienda, EUR)'
-                    : game.valueSource === 'pricecharting'
-                      ? 'PriceCharting (USD, guía)'
-                      : game.valueSource === 'ebay'
-                        ? 'eBay (anuncios activos)'
-                        : 'Manual'}
-                  {game.valueUpdatedAt ? ` · ${new Date(game.valueUpdatedAt).toLocaleDateString('es-ES')}` : ''}
-                </Text>
-              ) : (
+              {!valueSourceLabel ? (
                 <Text style={styles.valueHint}>
                   Pulsa «Actualizar valor» usando el orden de Ajustes → Catálogo, o edita a mano.
                 </Text>
-              )}
+              ) : null}
               <TouchableOpacity
                 style={[styles.valueBtn, styles.valueBtnWide, priceBusy && styles.valueBtnDisabled]}
                 onPress={onPriceFromPreferencesChain}
@@ -720,6 +804,7 @@ const styles = StyleSheet.create({
   statusDot: { width: 9, height: 9, borderRadius: 5 },
   statusLabel: { color: theme.colors.textLight, fontWeight: '700', fontSize: 12 },
   sourceLabel: { color: theme.colors.textDim, fontSize: 11 },
+  sourceLink: { textDecorationLine: 'underline' },
   editBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingVertical: 5, paddingHorizontal: 10, borderRadius: 8,

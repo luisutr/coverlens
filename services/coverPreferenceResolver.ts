@@ -1,5 +1,6 @@
 import type { CoverSourcePreferences } from './coverSourcePreferences';
 import { loadCoverSourcePreferences } from './coverSourcePreferences';
+import { resolveCoverFromCoverLensResource } from './providers/coverLensResourceProvider';
 import { resolveCoverFromGameplayStoresSearch } from './providers/gameplayStoresCoverProvider';
 import { resolveCoverFromScreenScraperSearch } from './providers/screenScraperProvider';
 import { resolveCoverFromSteamGridDb } from './providers/steamGridDbProvider';
@@ -8,7 +9,7 @@ export type CoverResolution = { url: string | null; source: string | null };
 
 /**
  * Portada del catálogo: orden y fuentes activas vienen de preferencias (Ajustes).
- * Por defecto: GameplayStores → SteamGridDB → URL IGDB de metadatos → ScreenScraper.
+ * Por defecto: CoverLens Resource → GameplayStores → SteamGridDB → URL IGDB → ScreenScraper.
  */
 export async function resolvePreferredCoverWithSource(
   title: string,
@@ -29,6 +30,11 @@ export async function resolvePreferredCoverWithSource(
   for (const id of prefs.order) {
     if (!prefs.enabled[id]) continue;
     switch (id) {
+      case 'coverlens': {
+        const u = await resolveCoverFromCoverLensResource(t, platformHint);
+        if (u) return { url: u, source: 'coverlens' };
+        break;
+      }
       case 'gameplaystores': {
         const u = await resolveCoverFromGameplayStoresSearch(t, platformHint);
         if (u) return { url: u, source: 'gameplaystores' };

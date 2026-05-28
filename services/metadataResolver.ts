@@ -2,6 +2,7 @@ import { loadCoverSourcePreferences } from './coverSourcePreferences';
 import { loadMetadataSourcePreferences } from './metadataSourcePreferences';
 import { mergeMetadataLayers, isUsableMetadataLayer } from './metadataLayerMerge';
 import { resolvePreferredCoverWithSource } from './coverPreferenceResolver';
+import { resolveFromCoverLensResource } from './providers/coverLensResourceProvider';
 import { resolveFromGameplayStoresMetadata } from './providers/gameplayStoresMetadataProvider';
 import { resolveFromIgdb } from './providers/igdbProvider';
 import { resolveFromScreenScraper } from './providers/screenScraperProvider';
@@ -26,7 +27,16 @@ function omitImageFields(r: MetadataResult): Omit<MetadataResult, 'coverUrl' | '
 
 function emptyRichMetadata(): Pick<
   MetadataResult,
-  'version' | 'releaseYear' | 'genre' | 'developer' | 'publisher' | 'description' | 'rating' | 'franchise'
+  | 'version'
+  | 'releaseYear'
+  | 'genre'
+  | 'developer'
+  | 'publisher'
+  | 'description'
+  | 'rating'
+  | 'franchise'
+  | 'textLanguages'
+  | 'voiceLanguages'
 > {
   return {
     version: null,
@@ -37,6 +47,8 @@ function emptyRichMetadata(): Pick<
     description: null,
     rating: null,
     franchise: null,
+    textLanguages: null,
+    voiceLanguages: null,
   };
 }
 
@@ -55,7 +67,9 @@ export async function resolveMetadata(input: ResolveInput): Promise<MetadataResu
     if (!metaPrefs.enabled[id]) continue;
 
     let layer: MetadataResult | null = null;
-    if (id === 'gameplaystores') {
+    if (id === 'coverlens') {
+      layer = await resolveFromCoverLensResource(working);
+    } else if (id === 'gameplaystores') {
       layer = await resolveFromGameplayStoresMetadata(working);
     } else if (id === 'igdb') {
       layer = await resolveFromIgdb(working);

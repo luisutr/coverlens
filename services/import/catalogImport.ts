@@ -185,6 +185,8 @@ function coverLensItemToRow(item: Record<string, unknown>): NewGameInput | null 
     description: pickStr(item, ['description']),
     rating: pickNum(item, ['rating']),
     franchise: pickStr(item, ['franchise']),
+    textLanguages: pickStr(item, ['textLanguages']),
+    voiceLanguages: pickStr(item, ['voiceLanguages']),
     coverUrl,
     metadataStatus: 'pending',
     metadataSource: pickStr(item, ['metadataSource']) ?? 'import:coverlens',

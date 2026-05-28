@@ -1,8 +1,8 @@
 /**
  * Contrato de orden por defecto (Ajustes → fuentes):
- * - Portada: GameplayStores → SteamGridDB → IGDB → ScreenScraper
- * - Metadatos: GameplayStores → IGDB → ScreenScraper
- * - Valor: GameplayStores → PriceCharting → eBay
+ * - Portada: CoverLens Resource → GameplayStores → SteamGridDB → IGDB → ScreenScraper
+ * - Metadatos: CoverLens Resource → GameplayStores → IGDB → ScreenScraper
+ * - Valor: CoverLens Resource → GameplayStores → PriceCharting → eBay
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,6 +14,9 @@ vi.mock('../services/providers/steamGridDbProvider', () => ({
 }));
 vi.mock('../services/providers/gameplayStoresCoverProvider', () => ({
   resolveCoverFromGameplayStoresSearch: vi.fn(),
+}));
+vi.mock('../services/providers/coverLensResourceProvider', () => ({
+  resolveCoverFromCoverLensResource: vi.fn(),
 }));
 import {
   ALL_COVER_PROVIDER_IDS,
@@ -32,22 +35,29 @@ import {
 } from '../services/valueSourcePreferences';
 import { resolvePreferredCoverWithSource } from '../services/coverPreferenceResolver';
 import { resolveCoverFromGameplayStoresSearch } from '../services/providers/gameplayStoresCoverProvider';
+import { resolveCoverFromCoverLensResource } from '../services/providers/coverLensResourceProvider';
 import { resolveCoverFromScreenScraperSearch } from '../services/providers/screenScraperProvider';
 import { resolveCoverFromSteamGridDb } from '../services/providers/steamGridDbProvider';
 
 describe('orden por defecto de fuentes (ids)', () => {
-  it('portada / imagen: GameplayStores → SteamGridDB → IGDB → ScreenScraper', () => {
-    expect(ALL_COVER_PROVIDER_IDS).toEqual(['gameplaystores', 'steamgriddb', 'igdb', 'screenscraper']);
+  it('portada / imagen: CoverLens Resource → GameplayStores → SteamGridDB → IGDB → ScreenScraper', () => {
+    expect(ALL_COVER_PROVIDER_IDS).toEqual([
+      'coverlens',
+      'gameplaystores',
+      'steamgriddb',
+      'igdb',
+      'screenscraper',
+    ]);
     expect(DEFAULT_COVER_SOURCE_PREFERENCES.order).toEqual(ALL_COVER_PROVIDER_IDS);
   });
 
-  it('metadatos: GameplayStores → IGDB → ScreenScraper', () => {
-    expect(ALL_METADATA_PROVIDER_IDS).toEqual(['gameplaystores', 'igdb', 'screenscraper']);
+  it('metadatos: CoverLens Resource → GameplayStores → IGDB → ScreenScraper', () => {
+    expect(ALL_METADATA_PROVIDER_IDS).toEqual(['coverlens', 'gameplaystores', 'igdb', 'screenscraper']);
     expect(DEFAULT_METADATA_SOURCE_PREFERENCES.order).toEqual(ALL_METADATA_PROVIDER_IDS);
   });
 
-  it('precio / valor: GameplayStores → PriceCharting → eBay', () => {
-    expect(ALL_VALUE_PROVIDER_IDS).toEqual(['gameplaystores', 'pricecharting', 'ebay']);
+  it('precio / valor: CoverLens Resource → GameplayStores → PriceCharting → eBay', () => {
+    expect(ALL_VALUE_PROVIDER_IDS).toEqual(['coverlens', 'gameplaystores', 'pricecharting', 'ebay']);
     expect(DEFAULT_VALUE_SOURCE_PREFERENCES.order).toEqual(ALL_VALUE_PROVIDER_IDS);
   });
 });
@@ -58,7 +68,7 @@ describe('normalize* restaura el orden canónico si falta un id', () => {
       order: ['igdb', 'steamgriddb'],
       enabled: DEFAULT_COVER_SOURCE_PREFERENCES.enabled,
     });
-    expect(n.order).toEqual(['igdb', 'steamgriddb', 'gameplaystores', 'screenscraper']);
+    expect(n.order).toEqual(['igdb', 'steamgriddb', 'coverlens', 'gameplaystores', 'screenscraper']);
   });
 
   it('metadata: orden parcial se rellena al final', () => {
@@ -66,7 +76,7 @@ describe('normalize* restaura el orden canónico si falta un id', () => {
       order: ['screenscraper'],
       enabled: DEFAULT_METADATA_SOURCE_PREFERENCES.enabled,
     });
-    expect(n.order).toEqual(['screenscraper', 'gameplaystores', 'igdb']);
+    expect(n.order).toEqual(['screenscraper', 'coverlens', 'gameplaystores', 'igdb']);
   });
 
   it('value: orden parcial se rellena al final', () => {
@@ -74,20 +84,25 @@ describe('normalize* restaura el orden canónico si falta un id', () => {
       order: ['ebay'],
       enabled: DEFAULT_VALUE_SOURCE_PREFERENCES.enabled,
     });
-    expect(n.order).toEqual(['ebay', 'gameplaystores', 'pricecharting']);
+    expect(n.order).toEqual(['ebay', 'coverlens', 'gameplaystores', 'pricecharting']);
   });
 });
 
 describe('resolvePreferredCoverWithSource con DEFAULT_COVER_SOURCE_PREFERENCES', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(resolveCoverFromCoverLensResource).mockResolvedValue(null);
     vi.mocked(resolveCoverFromGameplayStoresSearch).mockResolvedValue(null);
     vi.mocked(resolveCoverFromSteamGridDb).mockResolvedValue(null);
     vi.mocked(resolveCoverFromScreenScraperSearch).mockResolvedValue(null);
   });
 
-  it('recorre portadas en orden: GameplayStores → SteamGridDB → IGDB (fallback) → ScreenScraper', async () => {
+  it('recorre portadas en orden: CoverLens → GameplayStores → SteamGridDB → IGDB (fallback) → ScreenScraper', async () => {
     const order: string[] = [];
+    vi.mocked(resolveCoverFromCoverLensResource).mockImplementation(async () => {
+      order.push('coverlens');
+      return null;
+    });
     vi.mocked(resolveCoverFromGameplayStoresSearch).mockImplementation(async () => {
       order.push('gameplaystores');
       return null;
@@ -108,7 +123,7 @@ describe('resolvePreferredCoverWithSource con DEFAULT_COVER_SOURCE_PREFERENCES',
       DEFAULT_COVER_SOURCE_PREFERENCES
     );
 
-    expect(order).toEqual(['gameplaystores', 'steamgriddb', 'screenscraper']);
+    expect(order).toEqual(['coverlens', 'gameplaystores', 'steamgriddb', 'screenscraper']);
     expect(url).toBe('https://ss/cover.png');
     expect(source).toBe('screenscraper');
   });

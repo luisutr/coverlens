@@ -21,26 +21,22 @@ export function hasHttpCover(coverUrl: string | null | undefined): boolean {
   return /^https?:\/\//i.test(u);
 }
 
-/**
- * Campos de ficha que importan para considerar la entrada «completa» (sin barcode ni precio).
- * Basta con al menos uno relleno además de título, plataforma y portada.
- */
-function richFieldCount(fields: {
+type RichMetadataFields = {
   releaseYear?: number | null;
   genre?: string | null;
   developer?: string | null;
   publisher?: string | null;
   description?: string | null;
-  version?: string | null;
-}): number {
-  let n = 0;
-  if (fields.releaseYear != null && !Number.isNaN(Number(fields.releaseYear))) n++;
-  if ((fields.genre?.trim() ?? '').length > 0) n++;
-  if ((fields.developer?.trim() ?? '').length > 0) n++;
-  if ((fields.publisher?.trim() ?? '').length > 0) n++;
-  if ((fields.description?.trim() ?? '').length > 24) n++;
-  if ((fields.version?.trim() ?? '').length > 0) n++;
-  return n;
+};
+
+/** Todos los campos de ficha de texto deben estar rellenos (sin exigir barcode, precio ni versión/edición). */
+function hasAllRichMetadataFields(fields: RichMetadataFields): boolean {
+  if (fields.releaseYear == null || Number.isNaN(Number(fields.releaseYear))) return false;
+  if (!(fields.genre?.trim() ?? '').length) return false;
+  if (!(fields.developer?.trim() ?? '').length) return false;
+  if (!(fields.publisher?.trim() ?? '').length) return false;
+  if ((fields.description?.trim() ?? '').length <= 24) return false;
+  return true;
 }
 
 export type GameFieldsForStatus = {
@@ -56,14 +52,14 @@ export type GameFieldsForStatus = {
 };
 
 /**
- * Regla de catálogo: resolved = portada HTTP + título válido + plataforma conocida + al menos un dato de ficha.
- * partial = falta portada, plataforma/título mal o ningún dato de ficha extra.
+ * Regla de catálogo: resolved = portada HTTP + título válido + plataforma conocida + todos los campos de ficha.
+ * partial = falta portada, plataforma/título mal o cualquier campo de ficha vacío (año, género, dev, pub, descripción).
  */
 export function deriveMetadataStatusFromGameFields(game: GameFieldsForStatus): 'resolved' | 'partial' {
   if (!hasHttpCover(game.coverUrl)) return 'partial';
   if (isPlaceholderTitle(game.title)) return 'partial';
   if (isUnknownPlatform(game.platform)) return 'partial';
-  if (richFieldCount(game) < 1) return 'partial';
+  if (!hasAllRichMetadataFields(game)) return 'partial';
   return 'resolved';
 }
 

@@ -1,0 +1,18 @@
+CoverLens
+Copyright (C) 2026 CoverLens contributors
+
+This project is licensed under GNU GPL v3.0. See LICENSE.
+
+IMPORTANT THIRD-PARTY NOTICE
+This application can integrate optional third-party data/media providers.
+Each provider keeps its own rights, terms and licenses.
+
+CoverLens is not officially affiliated with:
+- GameplayStores
+- IGDB / Twitch
+- SteamGridDB
+- ScreenScraper
+- GameUPC
+
+Before public distribution, verify permissions and terms for each enabled provider.
+See docs/FUENTES_Y_ATRIBUCIONES.md and docs/PRELANZAMIENTO_STORES_CHECKLIST.md.

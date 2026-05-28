@@ -25,6 +25,16 @@ export default function RootLayout() {
               headerTitleStyle: { color: theme.colors.textLight, fontSize: 15 },
             }}
           />
+          <Stack.Screen
+            name="fuentes-atribuciones"
+            options={{
+              headerShown: true,
+              title: 'Fuentes y atribuciones',
+              headerStyle: { backgroundColor: theme.colors.background },
+              headerTintColor: theme.colors.primary,
+              headerTitleStyle: { color: theme.colors.textLight, fontSize: 15 },
+            }}
+          />
           <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
         </Stack>
         <FirstRunTourOverlay />

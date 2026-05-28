@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import React from 'react';
 import {
   ActivityIndicator,
@@ -345,6 +345,8 @@ export default function AjustesScreen() {
                   developer: resolved.developer ?? game.developer,
                   publisher: resolved.publisher ?? game.publisher,
                   description: resolved.description ?? game.description,
+                  textLanguages: resolved.textLanguages ?? game.textLanguages,
+                  voiceLanguages: resolved.voiceLanguages ?? game.voiceLanguages,
                   rating: resolved.rating ?? game.rating,
                   franchise: resolved.franchise ?? game.franchise,
                   coverUrl: game.coverUrl,
@@ -424,6 +426,8 @@ export default function AjustesScreen() {
                     developer: g.developer,
                     publisher: g.publisher,
                     description: g.description,
+                    textLanguages: g.textLanguages,
+                    voiceLanguages: g.voiceLanguages,
                     rating: g.rating,
                     franchise: g.franchise,
                     coverUrl: coverToStore,
@@ -1020,7 +1024,7 @@ export default function AjustesScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.coverPrefSectionTitle}>Fuentes de metadatos</Text>
               <Text style={styles.coverPrefSectionHint}>
-                GameplayStores va primero por defecto; IGDB y ScreenScraper completan datos cuando los activas.
+                CoverLens Resource va primero por defecto; el resto completa o sustituye según orden y switches.
               </Text>
             </View>
           </Pressable>
@@ -1088,7 +1092,7 @@ export default function AjustesScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.coverPrefSectionTitle}>Fuentes de valor</Text>
               <Text style={styles.coverPrefSectionHint}>
-                Activa y ordena GameplayStores, PriceCharting y eBay para «Actualizar valor».
+                CoverLens Resource va primero por defecto; GameplayStores, PriceCharting y eBay siguen el orden que configures.
               </Text>
             </View>
           </Pressable>
@@ -1247,6 +1251,12 @@ export default function AjustesScreen() {
           hint="Portadas, metadatos (GameplayStores, IGDB…), valor y credenciales opcionales"
           onPress={() => router.push('/documentacion-fuentes')}
         />
+        <ActionRow
+          icon="information-circle-outline"
+          label="Fuentes y atribuciones"
+          hint="No afiliación oficial y enlaces a proveedores externos"
+          onPress={() => router.push('/fuentes-atribuciones' as Href)}
+        />
       </View>
 
       {/* ── Sección 2: APIs de metadatos (colapsable) ───────────────────────── */}
@@ -1307,6 +1317,9 @@ export default function AjustesScreen() {
           <Text style={styles.sectionHint}>
             Tras GameplayStores cuando aplica. Grids en tamaño reducido (467×600) para menos datos; prueba título
             original y limpio.
+          </Text>
+          <Text style={styles.sectionHint}>
+            Importante para cumplimiento: usa tu API key personal de SteamGridDB en esta app (no una key compartida).
           </Text>
           {field('API Key', 'steamGridDbApiKey', 'tu-api-key')}
           <TouchableOpacity onPress={() => void Linking.openURL(providerLinks.steamGridDb)}>

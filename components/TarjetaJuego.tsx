@@ -8,7 +8,7 @@ import { getIgdbImageRequestHeadersSync } from '../services/igdbImageRequest';
 const STATUS_COLOR: Record<string, string> = {
   pending: '#aaaaaa',
   resolved: '#40d67b',
-  partial: '#f1c40f',
+  partial: '#f39c12',
   error: '#ff6b6b',
 };
 

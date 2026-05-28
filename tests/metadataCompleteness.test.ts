@@ -4,35 +4,53 @@ import {
   finalizeMetadataResult,
 } from '../services/utils/metadataCompleteness';
 
+const completeGame = {
+  title: 'Zelda',
+  platform: 'Switch',
+  coverUrl: 'https://images.igdb.com/x.jpg',
+  releaseYear: 2017,
+  genre: 'Adventure',
+  developer: 'Nintendo EPD',
+  publisher: 'Nintendo',
+  description: 'Una aventura épica en Hyrule con más de veinticinco caracteres.',
+};
+
 describe('deriveMetadataStatusFromGameFields', () => {
-  it('resolved con portada, plataforma y al menos un dato de ficha', () => {
-    expect(
-      deriveMetadataStatusFromGameFields({
-        title: 'Zelda',
-        platform: 'Switch',
-        coverUrl: 'https://images.igdb.com/x.jpg',
-        genre: 'Adventure',
-      })
-    ).toBe('resolved');
+  it('resolved con portada y todos los campos de ficha', () => {
+    expect(deriveMetadataStatusFromGameFields(completeGame)).toBe('resolved');
   });
 
-  it('partial sin portada http aunque haya género', () => {
+  it('partial sin portada http aunque el resto esté completo', () => {
     expect(
       deriveMetadataStatusFromGameFields({
-        title: 'Zelda',
-        platform: 'Switch',
+        ...completeGame,
         coverUrl: null,
-        genre: 'Adventure',
       })
     ).toBe('partial');
   });
 
-  it('partial con portada pero sin ningún dato de ficha extra', () => {
+  it('partial con portada pero falta algún campo de ficha', () => {
     expect(
       deriveMetadataStatusFromGameFields({
         title: 'Zelda',
         platform: 'Switch',
         coverUrl: 'https://x/y.jpg',
+        genre: 'Adventure',
+      })
+    ).toBe('partial');
+  });
+
+  it('partial si solo falta developer o publisher', () => {
+    expect(
+      deriveMetadataStatusFromGameFields({
+        ...completeGame,
+        developer: null,
+      })
+    ).toBe('partial');
+    expect(
+      deriveMetadataStatusFromGameFields({
+        ...completeGame,
+        publisher: ' ',
       })
     ).toBe('partial');
   });
@@ -48,5 +66,18 @@ describe('finalizeMetadataResult', () => {
       error: 'fail',
     });
     expect(r.status).toBe('error');
+  });
+
+  it('reclasifica resolved del proveedor si faltan campos reales', () => {
+    const r = finalizeMetadataResult({
+      title: 'Stellar Blade',
+      platform: 'PlayStation 5',
+      coverUrl: 'https://image.test/cover.jpg',
+      releaseYear: 2024,
+      genre: 'Action',
+      status: 'resolved',
+      source: 'coverlens',
+    });
+    expect(r.status).toBe('partial');
   });
 });

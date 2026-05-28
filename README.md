@@ -8,6 +8,17 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 - **Texto en la app:** Ajustes → «Documentación: portadas y fuentes» (sale de `constants/documentation/portadasYFuentesDoc.ts`; si cambias la lógica, actualiza ese módulo y el Markdown).
 - **Flujo Android + iOS:** [docs/WORKFLOW_ANDROID_IOS.md](docs/WORKFLOW_ANDROID_IOS.md) — estructura de ramas, merges y setup recomendado para desarrollo paralelo sin conflictos.
 - **Registro de cambios:** [CHANGELOG.md](CHANGELOG.md) — obligatorio actualizarlo en cada PR/commit funcional.
+- **Prelanzamiento stores:** [docs/PRELANZAMIENTO_STORES_CHECKLIST.md](docs/PRELANZAMIENTO_STORES_CHECKLIST.md) — checklist legal, privacidad y calidad antes de enviar a App Store/Google Play.
+- **Fuentes y atribuciones:** [docs/FUENTES_Y_ATRIBUCIONES.md](docs/FUENTES_Y_ATRIBUCIONES.md) — no afiliación, proveedores externos y riesgos/licencias.
+- **Solicitudes de permisos:** [docs/PLANTILLAS_SOLICITUD_PERMISOS.md](docs/PLANTILLAS_SOLICITUD_PERMISOS.md) — plantillas de email para GameplayStores, SteamGridDB, ScreenScraper y GameUPC.
+- **Seguimiento de permisos:** [docs/SEGUIMIENTO_PERMISOS_PROVEEDORES.md](docs/SEGUIMIENTO_PERMISOS_PROVEEDORES.md) — tablero de estado para decidir qué fuentes se pueden activar en release.
+- **Política de privacidad (ES):** [docs/PRIVACY_POLICY_ES.md](docs/PRIVACY_POLICY_ES.md) — base para publicar URL de privacidad en App Store Connect y Google Play Console.
+
+## Licencia
+
+- Código: GNU GPL v3.0 (`LICENSE`).
+- Aviso legal del proyecto: `NOTICE`.
+- Proveedores externos: revisar términos y permisos antes de habilitarlos en release público.
 
 ## Get started
 

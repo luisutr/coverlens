@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../services/providers/gameplayStoresPriceProvider', () => ({
   resolveRetailPriceFromGameplayStoresSearch: vi.fn(),
 }));
+vi.mock('../services/providers/coverLensResourceProvider', () => ({
+  resolveValueFromCoverLensResource: vi.fn(),
+}));
 vi.mock('../services/pricechartingProvider', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../services/pricechartingProvider')>();
   return { ...actual, fetchPriceChartingProduct: vi.fn() };
@@ -15,6 +18,7 @@ vi.mock('../services/ebayPriceProvider', () => ({
 import { fetchPriceChartingProduct } from '../services/pricechartingProvider';
 import { fetchEbayApplicationToken, medianActiveListingPrice } from '../services/ebayPriceProvider';
 import { resolveRetailPriceFromGameplayStoresSearch } from '../services/providers/gameplayStoresPriceProvider';
+import { resolveValueFromCoverLensResource } from '../services/providers/coverLensResourceProvider';
 import { resolveValueEstimateFromPreferences } from '../services/valuePreferenceResolver';
 import { DEFAULT_VALUE_SOURCE_PREFERENCES } from '../services/valueSourcePreferences';
 import type { ApiCredentials } from '../services/credentialsStore';
@@ -38,13 +42,31 @@ const creds: ApiCredentials = {
 describe('resolveValueEstimateFromPreferences — orden por defecto', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(resolveValueFromCoverLensResource).mockResolvedValue(null);
     vi.mocked(resolveRetailPriceFromGameplayStoresSearch).mockResolvedValue(null);
     vi.mocked(fetchPriceChartingProduct).mockResolvedValue(null);
     vi.mocked(fetchEbayApplicationToken).mockResolvedValue('ebay-app-token');
     vi.mocked(medianActiveListingPrice).mockResolvedValue(null);
   });
 
-  it('GameplayStores tiene prioridad si devuelve precio', async () => {
+  it('CoverLens Resource tiene prioridad si devuelve precio', async () => {
+    vi.mocked(resolveValueFromCoverLensResource).mockResolvedValue({ cents: 3995, currency: 'EUR' });
+    vi.mocked(resolveRetailPriceFromGameplayStoresSearch).mockResolvedValue({ cents: 1500, currency: 'EUR' });
+
+    const r = await resolveValueEstimateFromPreferences({
+      title: 'Mario Kart 8 Deluxe',
+      platform: 'Switch',
+      barcode: null,
+      discOnly: false,
+      creds,
+      prefs: DEFAULT_VALUE_SOURCE_PREFERENCES,
+    });
+
+    expect(r).toEqual({ cents: 3995, currency: 'EUR', source: 'coverlens' });
+    expect(resolveRetailPriceFromGameplayStoresSearch).not.toHaveBeenCalled();
+  });
+
+  it('GameplayStores tiene prioridad si CoverLens no aporta valor', async () => {
     vi.mocked(resolveRetailPriceFromGameplayStoresSearch).mockResolvedValue({ cents: 1500, currency: 'EUR' });
     vi.mocked(fetchPriceChartingProduct).mockResolvedValue({
       looseCents: 999,
@@ -120,7 +142,7 @@ describe('resolveValueEstimateFromPreferences — orden por defecto', () => {
       discOnly: false,
       creds,
       prefs: {
-        order: ['ebay', 'gameplaystores', 'pricecharting'],
+        order: ['ebay', 'gameplaystores', 'pricecharting', 'coverlens'],
         enabled: DEFAULT_VALUE_SOURCE_PREFERENCES.enabled,
       },
     });

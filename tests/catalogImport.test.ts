@@ -51,7 +51,7 @@ describe('parseCatalogImportJson', () => {
           Developers: [{ Name: 'Square' }],
           Publishers: [{ Name: 'Square' }],
           CoverImage: 'https://example.com/cover.jpg',
-          Description: '<p>Un clásico</p>',
+          Description: '<p>Un clásico de rol japonés con combates por turnos y una historia memorable.</p>',
           UserScore: 88,
         },
         { Name: 'Hidden Game', Hidden: true },
@@ -64,7 +64,7 @@ describe('parseCatalogImportJson', () => {
     expect(r.rows[0]!.platform).toContain('PlayStation');
     expect(r.rows[0]!.releaseYear).toBe(1997);
     expect(r.rows[0]!.genre).toBe('RPG');
-    expect(r.rows[0]!.description).toBe('Un clásico');
+    expect(r.rows[0]!.description).toContain('clásico de rol');
     expect(r.rows[0]!.favorite).toBe(1);
     expect(r.rows[0]!.metadataSource).toBe('import:playnite');
     expect(r.rows[0]!.metadataStatus).toBe('resolved');

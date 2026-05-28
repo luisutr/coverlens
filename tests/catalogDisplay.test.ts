@@ -13,6 +13,8 @@ function base(over: Partial<GameRecord> & Pick<GameRecord, 'id' | 'title' | 'pla
     description: null,
     rating: null,
     franchise: null,
+    textLanguages: null,
+    voiceLanguages: null,
     coverUrl: null,
     headerImageUrl: null,
     coverLocalThumbUri: null,
@@ -40,7 +42,7 @@ describe('filterAndSortGames', () => {
   it('filtra por texto en título', () => {
     const out = filterAndSortGames(
       games,
-      { search: 'met', platform: null, onlyFavorite: false, onlyDiscOnly: false },
+      { search: 'met', platform: null, onlyFavorite: false, onlyDiscOnly: false, onlySpanishText: false, onlySpanishVoice: false },
       'title_asc'
     );
     expect(out.map((x) => x.title)).toEqual(['Metroid']);
@@ -49,7 +51,7 @@ describe('filterAndSortGames', () => {
   it('filtra por plataforma', () => {
     const out = filterAndSortGames(
       games,
-      { search: '', platform: 'NES', onlyFavorite: false, onlyDiscOnly: false },
+      { search: '', platform: 'NES', onlyFavorite: false, onlyDiscOnly: false, onlySpanishText: false, onlySpanishVoice: false },
       'title_asc'
     );
     expect(out.map((x) => x.title)).toEqual(['Mario']);
@@ -58,7 +60,7 @@ describe('filterAndSortGames', () => {
   it('filtra favoritos y ordena por valor', () => {
     const out = filterAndSortGames(
       games,
-      { search: '', platform: null, onlyFavorite: true, onlyDiscOnly: false },
+      { search: '', platform: null, onlyFavorite: true, onlyDiscOnly: false, onlySpanishText: false, onlySpanishVoice: false },
       'value_desc'
     );
     expect(out).toHaveLength(1);
@@ -68,9 +70,42 @@ describe('filterAndSortGames', () => {
   it('filtra solo disco', () => {
     const out = filterAndSortGames(
       games,
-      { search: '', platform: null, onlyFavorite: false, onlyDiscOnly: true },
+      { search: '', platform: null, onlyFavorite: false, onlyDiscOnly: true, onlySpanishText: false, onlySpanishVoice: false },
       'added_desc'
     );
     expect(out.map((x) => x.id)).toEqual([2]);
+  });
+
+  it('filtra por castellano en texto y doblaje', () => {
+    const withLang = [
+      ...games,
+      base({
+        id: 4,
+        title: 'Español texto',
+        platform: 'PS4',
+        textLanguages: 'Castellano, Inglés',
+        voiceLanguages: 'Inglés',
+      }),
+      base({
+        id: 5,
+        title: 'Doblado ES',
+        platform: 'PS4',
+        textLanguages: 'Inglés',
+        voiceLanguages: 'Castellano',
+      }),
+    ];
+    const textOnly = filterAndSortGames(
+      withLang,
+      { search: '', platform: null, onlyFavorite: false, onlyDiscOnly: false, onlySpanishText: true, onlySpanishVoice: false },
+      'title_asc'
+    );
+    expect(textOnly.map((x) => x.id)).toEqual([4]);
+
+    const voiceOnly = filterAndSortGames(
+      withLang,
+      { search: '', platform: null, onlyFavorite: false, onlyDiscOnly: false, onlySpanishText: false, onlySpanishVoice: true },
+      'title_asc'
+    );
+    expect(voiceOnly.map((x) => x.id)).toEqual([5]);
   });
 });

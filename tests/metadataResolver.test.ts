@@ -161,13 +161,16 @@ describe('metadataResolver', () => {
       return {
         title: 'Super Mario Bros',
         platform: 'NES',
-        status: 'resolved',
+        status: 'partial',
         source: 'igdb',
         coverUrl: 'https://image.test/cover.jpg',
         headerImageUrl: 'https://image.test/cover.jpg',
         version: null,
         genre: 'Platform',
         releaseYear: 1985,
+        developer: 'Nintendo',
+        publisher: 'Nintendo',
+        description: 'El clásico de plataformas que definió una generación entera.',
       };
     });
 
@@ -180,13 +183,16 @@ describe('metadataResolver', () => {
     vi.mocked(resolveFromIgdb).mockResolvedValue({
       title: 'Stellar Blade',
       platform: 'PlayStation 5',
-      status: 'resolved',
+      status: 'partial',
       source: 'igdb',
       coverUrl: 'https://image.test/cover.jpg',
       headerImageUrl: 'https://image.test/cover.jpg',
       version: null,
       genre: 'Action',
       releaseYear: 2024,
+      developer: 'Shift Up',
+      publisher: 'Sony',
+      description: 'Acción y ciencia ficción en un mundo postapocalíptico dominado por criaturas.',
     });
 
     const result = await resolveMetadata({ titleHint: 'Stellar Blade' });
@@ -201,13 +207,16 @@ describe('metadataResolver', () => {
     vi.mocked(resolveFromIgdb).mockResolvedValue({
       title: 'X-Men Next Dimension',
       platform: 'PlayStation 2',
-      status: 'resolved',
+      status: 'partial',
       source: 'igdb',
       coverUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co1.jpg',
       headerImageUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co1.jpg',
       version: null,
       genre: 'Fighting',
       releaseYear: 2003,
+      developer: 'Paradox',
+      publisher: 'Activision',
+      description: 'Luchadores de Marvel en combates tridimensionales con varios modos de juego.',
     });
     vi.mocked(resolvePreferredCoverWithSource).mockResolvedValue({
       url: 'https://media.gameplaystores.es/90759-thickbox_default/x-men.jpg',
@@ -259,13 +268,16 @@ describe('metadataResolver', () => {
     vi.mocked(resolveFromIgdb).mockResolvedValue({
       title: 'Stellar Blade',
       platform: 'PlayStation 5',
-      status: 'resolved',
+      status: 'partial',
       source: 'igdb',
       coverUrl: 'https://image.test/cover.jpg',
       headerImageUrl: 'https://image.test/header.jpg',
       version: null,
       genre: 'Action',
       releaseYear: 2024,
+      developer: 'Shift Up',
+      publisher: 'Sony',
+      description: 'Acción y ciencia ficción en un mundo postapocalíptico dominado por criaturas.',
     });
 
     const result = await resolveMetadata({ titleHint: 'Stellar Blade', fetchCovers: false });

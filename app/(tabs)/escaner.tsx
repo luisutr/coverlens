@@ -23,6 +23,7 @@ import {
 import { theme } from '../../constants/theme';
 import { addGame, getGameByBarcode, getGames, initDatabase } from '../../database/dbConfig';
 import { resolveMetadata } from '../../services/metadataResolver';
+import { newGameFieldsFromMetadata } from '../../services/utils/metadataToGameInput';
 import { enqueueCoverThumbCache } from '../../services/storage/coverThumbCache';
 import { assessBarcode } from '../../services/utils/barcodeValidation';
 import { emitCatalogRefresh } from '../../services/catalogRefreshBus';
@@ -128,29 +129,13 @@ export default function EscanerScreen() {
           return;
         }
 
-        const newId = await addGame({
-          title: resolved.title,
-          barcode,
-          platform: resolved.platform,
-          version: resolved.version,
-          releaseYear: resolved.releaseYear,
-          genre: resolved.genre,
-          developer: resolved.developer,
-          publisher: resolved.publisher,
-          description: resolved.description,
-          rating: resolved.rating,
-          franchise: resolved.franchise,
-          coverUrl: resolved.coverUrl ?? null,
-          headerImageUrl: resolved.headerImageUrl ?? null,
-          metadataStatus: resolved.status,
-          metadataSource: resolved.source,
-          lastError: resolved.error ?? null,
-          favorite: favorite ? 1 : 0,
-          discOnly: discOnly ? 1 : 0,
-          valueCents: resolved.valueCents ?? null,
-          valueCurrency: resolved.valueCurrency ?? null,
-          valueSource: resolved.valueSource ?? null,
-        });
+        const newId = await addGame(
+          newGameFieldsFromMetadata(resolved, {
+            scannedBarcode: barcode,
+            favorite: favorite ? 1 : 0,
+            discOnly: discOnly ? 1 : 0,
+          })
+        );
         enqueueCoverThumbCache(newId, resolved.coverUrl ?? null);
         void advanceTourAfterBarcodeScan();
         emitCatalogRefresh();
@@ -303,21 +288,13 @@ export default function EscanerScreen() {
         titleHint: notFoundTitle.trim(),
         platformHint: notFoundPlatform.trim() ? canonicalizePlatform(notFoundPlatform.trim()) : null,
       });
-      const newId = await addGame({
-        title: resolved.title, barcode: notFoundBarcode, platform: resolved.platform,
-        version: resolved.version, releaseYear: resolved.releaseYear,
-        genre: resolved.genre, developer: resolved.developer,
-        publisher: resolved.publisher, description: resolved.description,
-        rating: resolved.rating, franchise: resolved.franchise,
-        coverUrl: resolved.coverUrl ?? null,
-        headerImageUrl: resolved.headerImageUrl ?? null,
-        metadataStatus: resolved.status, metadataSource: resolved.source,
-        lastError: resolved.error ?? null,
-        favorite: favorite ? 1 : 0, discOnly: discOnly ? 1 : 0,
-        valueCents: resolved.valueCents ?? null,
-        valueCurrency: resolved.valueCurrency ?? null,
-        valueSource: resolved.valueSource ?? null,
-      });
+      const newId = await addGame(
+        newGameFieldsFromMetadata(resolved, {
+          scannedBarcode: notFoundBarcode,
+          favorite: favorite ? 1 : 0,
+          discOnly: discOnly ? 1 : 0,
+        })
+      );
       enqueueCoverThumbCache(newId, resolved.coverUrl ?? null);
       void advanceTourAfterBarcodeScan();
       emitCatalogRefresh();
@@ -526,21 +503,12 @@ export default function EscanerScreen() {
     try {
       await initDatabase();
       const resolved = await resolveMetadata({ titleHint, platformHint });
-      const newId = await addGame({
-        title: resolved.title, barcode: null, platform: resolved.platform,
-        version: resolved.version, releaseYear: resolved.releaseYear,
-        genre: resolved.genre, developer: resolved.developer,
-        publisher: resolved.publisher, description: resolved.description,
-        rating: resolved.rating, franchise: resolved.franchise,
-        coverUrl: resolved.coverUrl ?? null,
-        headerImageUrl: resolved.headerImageUrl ?? null,
-        metadataStatus: resolved.status, metadataSource: resolved.source,
-        lastError: resolved.error ?? null,
-        favorite: favorite ? 1 : 0, discOnly: discOnly ? 1 : 0,
-        valueCents: resolved.valueCents ?? null,
-        valueCurrency: resolved.valueCurrency ?? null,
-        valueSource: resolved.valueSource ?? null,
-      });
+      const newId = await addGame(
+        newGameFieldsFromMetadata(resolved, {
+          favorite: favorite ? 1 : 0,
+          discOnly: discOnly ? 1 : 0,
+        })
+      );
       enqueueCoverThumbCache(newId, resolved.coverUrl ?? null);
       void advanceTourAfterBarcodeScan();
       setRawTitle('');

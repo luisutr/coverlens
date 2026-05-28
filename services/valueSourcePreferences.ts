@@ -4,13 +4,19 @@
  */
 import * as SecureStore from 'expo-secure-store';
 
-const STORAGE_KEY = 'coverlens_value_source_prefs_v1';
+const STORAGE_KEY = 'coverlens_value_source_prefs_v2';
 
-export type ValueProviderId = 'gameplaystores' | 'pricecharting' | 'ebay';
+export type ValueProviderId = 'coverlens' | 'gameplaystores' | 'pricecharting' | 'ebay';
 
-export const ALL_VALUE_PROVIDER_IDS: ValueProviderId[] = ['gameplaystores', 'pricecharting', 'ebay'];
+export const ALL_VALUE_PROVIDER_IDS: ValueProviderId[] = [
+  'coverlens',
+  'gameplaystores',
+  'pricecharting',
+  'ebay',
+];
 
 export const VALUE_PROVIDER_LABELS: Record<ValueProviderId, string> = {
+  coverlens: 'CoverLens Resource (EUR)',
   gameplaystores: 'GameplayStores (precio en tienda, EUR)',
   pricecharting: 'PriceCharting Pro (guía USD)',
   ebay: 'eBay (mediana anuncios activos)',
@@ -24,6 +30,7 @@ export type ValueSourcePreferences = {
 export const DEFAULT_VALUE_SOURCE_PREFERENCES: ValueSourcePreferences = {
   order: [...ALL_VALUE_PROVIDER_IDS],
   enabled: {
+    coverlens: true,
     gameplaystores: true,
     pricecharting: true,
     ebay: true,

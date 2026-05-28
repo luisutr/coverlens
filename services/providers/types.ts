@@ -3,6 +3,7 @@ export type MetadataStatus = 'resolved' | 'partial' | 'error';
 export type MetadataResult = {
   title: string;
   platform: string;
+  barcode?: string | null;
   version?: string | null;
   releaseYear?: number | null;
   genre?: string | null;
@@ -11,6 +12,10 @@ export type MetadataResult = {
   description?: string | null;
   rating?: number | null;
   franchise?: string | null;
+  /** Idiomas de menús/subtítulos (lista legible, p. ej. «Castellano, Inglés»). */
+  textLanguages?: string | null;
+  /** Idiomas de doblaje (lista legible). */
+  voiceLanguages?: string | null;
   coverUrl?: string | null;
   /** Arte de cabecera ancha en la ficha (p. ej. carátula IGDB); opcional y no se toca al «Actualizar portada». */
   headerImageUrl?: string | null;
@@ -20,7 +25,7 @@ export type MetadataResult = {
   /** Precio en tienda GameplayStores al importar (se guarda en `games.value*` si la BD lo admite). */
   valueCents?: number | null;
   valueCurrency?: string | null;
-  valueSource?: 'gameplaystores' | null;
+  valueSource?: 'coverlens' | 'gameplaystores' | null;
 };
 
 export type ResolveInput = {

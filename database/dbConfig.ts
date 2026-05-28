@@ -2,7 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { SQLiteDatabase, openDatabaseAsync } from 'expo-sqlite';
 
-export type ValueSource = 'gameplaystores' | 'pricecharting' | 'ebay' | 'manual';
+export type ValueSource = 'coverlens' | 'gameplaystores' | 'pricecharting' | 'ebay' | 'manual';
 
 export type GameRecord = {
   id: number;
@@ -17,6 +17,8 @@ export type GameRecord = {
   description: string | null;
   rating: number | null;
   franchise: string | null;
+  textLanguages: string | null;
+  voiceLanguages: string | null;
   coverUrl: string | null;
   /** Imagen ancha de cabecera en la ficha (p. ej. IGDB); si es null se usa coverUrl en la cabecera */
   headerImageUrl: string | null;
@@ -85,6 +87,8 @@ export async function initDatabase() {
   if (!cols.has('valueUpdatedAt'))  await db.execAsync('ALTER TABLE games ADD COLUMN valueUpdatedAt TEXT;');
   if (!cols.has('coverLocalThumbUri')) await db.execAsync('ALTER TABLE games ADD COLUMN coverLocalThumbUri TEXT;');
   if (!cols.has('headerImageUrl')) await db.execAsync('ALTER TABLE games ADD COLUMN headerImageUrl TEXT;');
+  if (!cols.has('textLanguages')) await db.execAsync('ALTER TABLE games ADD COLUMN textLanguages TEXT;');
+  if (!cols.has('voiceLanguages')) await db.execAsync('ALTER TABLE games ADD COLUMN voiceLanguages TEXT;');
 
   // Limpiar duplicados de barcode
   await db.execAsync(`
@@ -120,6 +124,8 @@ export type NewGameInput = {
   description?: string | null;
   rating?: number | null;
   franchise?: string | null;
+  textLanguages?: string | null;
+  voiceLanguages?: string | null;
   coverUrl?: string | null;
   headerImageUrl?: string | null;
   metadataStatus?: 'pending' | 'resolved' | 'partial' | 'error';
@@ -139,13 +145,14 @@ export async function addGame(input: NewGameInput): Promise<number> {
   const result = await db.runAsync(
     `INSERT INTO games (
       title, barcode, platform, version, releaseYear, genre, developer, publisher,
-      description, rating, franchise, coverUrl, headerImageUrl, metadataStatus, metadataSource, lastError, favorite, discOnly,
+      description, rating, franchise, textLanguages, voiceLanguages, coverUrl, headerImageUrl, metadataStatus, metadataSource, lastError, favorite, discOnly,
       valueCents, valueCurrency, valueSource, valueUpdatedAt
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     input.title, input.barcode ?? null, input.platform,
     input.version ?? null, input.releaseYear ?? null,
     input.genre ?? null, input.developer ?? null, input.publisher ?? null,
     input.description ?? null, input.rating ?? null, input.franchise ?? null,
+    input.textLanguages ?? null, input.voiceLanguages ?? null,
     input.coverUrl ?? null,
     input.headerImageUrl ?? null,
     input.metadataStatus ?? 'pending', input.metadataSource ?? null, input.lastError ?? null,
@@ -256,6 +263,8 @@ type MetadataUpdateInput = {
   description?: string | null;
   rating?: number | null;
   franchise?: string | null;
+  textLanguages?: string | null;
+  voiceLanguages?: string | null;
   coverUrl?: string | null;
   headerImageUrl?: string | null;
   metadataStatus: 'pending' | 'resolved' | 'partial' | 'error';
@@ -268,13 +277,14 @@ export async function updateGameMetadata(gameId: number, input: MetadataUpdateIn
   await db.runAsync(
     `UPDATE games
      SET title=?, platform=?, version=?, releaseYear=?, genre=?, developer=?, publisher=?,
-         description=?, rating=?, franchise=?, coverUrl=?, headerImageUrl=?,
+         description=?, rating=?, franchise=?, textLanguages=?, voiceLanguages=?, coverUrl=?, headerImageUrl=?,
          metadataStatus=?, metadataSource=?, lastError=?
      WHERE id=?`,
     input.title, input.platform,
     input.version ?? null, input.releaseYear ?? null,
     input.genre ?? null, input.developer ?? null, input.publisher ?? null,
     input.description ?? null, input.rating ?? null, input.franchise ?? null,
+    input.textLanguages ?? null, input.voiceLanguages ?? null,
     input.coverUrl ?? null,
     input.headerImageUrl ?? null,
     input.metadataStatus, input.metadataSource ?? null, input.lastError ?? null,
@@ -295,6 +305,7 @@ export async function updateGameFull(
     version?: string | null; releaseYear?: number | null;
     genre?: string | null; developer?: string | null; publisher?: string | null;
     description?: string | null; rating?: number | null; franchise?: string | null;
+    textLanguages?: string | null; voiceLanguages?: string | null;
     coverUrl?: string | null;
     headerImageUrl?: string | null;
     metadataStatus: 'pending' | 'resolved' | 'partial' | 'error';
@@ -309,7 +320,7 @@ export async function updateGameFull(
   await db.runAsync(
     `UPDATE games
      SET title=?, barcode=?, platform=?, version=?, releaseYear=?, genre=?, developer=?, publisher=?,
-         description=?, rating=?, franchise=?, coverUrl=?, headerImageUrl=?,
+         description=?, rating=?, franchise=?, textLanguages=?, voiceLanguages=?, coverUrl=?, headerImageUrl=?,
          metadataStatus=?, metadataSource=?, lastError=?,
          valueCents=?, valueCurrency=?, valueSource=?, valueUpdatedAt=?
      WHERE id=?`,
@@ -317,6 +328,7 @@ export async function updateGameFull(
     input.version ?? null, input.releaseYear ?? null,
     input.genre ?? null, input.developer ?? null, input.publisher ?? null,
     input.description ?? null, input.rating ?? null, input.franchise ?? null,
+    input.textLanguages ?? null, input.voiceLanguages ?? null,
     input.coverUrl ?? null,
     input.headerImageUrl ?? null,
     input.metadataStatus, input.metadataSource ?? null, input.lastError ?? null,
@@ -404,8 +416,8 @@ export async function importCatalogRows(
       const result = await db.runAsync(
         `INSERT INTO games (
           title, barcode, platform, version, releaseYear, genre, developer, publisher,
-          description, rating, franchise, coverUrl, headerImageUrl, metadataStatus, metadataSource, lastError, favorite, discOnly
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          description, rating, franchise, textLanguages, voiceLanguages, coverUrl, headerImageUrl, metadataStatus, metadataSource, lastError, favorite, discOnly
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         title,
         input.barcode ?? null,
         platform,
@@ -417,6 +429,8 @@ export async function importCatalogRows(
         input.description ?? null,
         input.rating ?? null,
         input.franchise ?? null,
+        input.textLanguages ?? null,
+        input.voiceLanguages ?? null,
         input.coverUrl ?? null,
         input.headerImageUrl ?? null,
         input.metadataStatus ?? 'pending',

@@ -33,6 +33,7 @@ export function mergeMetadataLayers(base: MetadataResult | null, layer: Metadata
   return {
     title,
     platform,
+    barcode: pickStr(base.barcode, layer.barcode),
     version: pickStr(base.version, layer.version),
     releaseYear: pickNum(base.releaseYear, layer.releaseYear),
     genre: pickStr(base.genre, layer.genre),
@@ -41,6 +42,8 @@ export function mergeMetadataLayers(base: MetadataResult | null, layer: Metadata
     description: pickStr(base.description, layer.description),
     rating: pickNum(base.rating, layer.rating),
     franchise: pickStr(base.franchise, layer.franchise),
+    textLanguages: pickStr(base.textLanguages, layer.textLanguages),
+    voiceLanguages: pickStr(base.voiceLanguages, layer.voiceLanguages),
     coverUrl: hasHttpCover(base.coverUrl) ? base.coverUrl! : layer.coverUrl ?? null,
     headerImageUrl: hasHttpCover(base.headerImageUrl) ? base.headerImageUrl! : layer.headerImageUrl ?? null,
     status: 'partial',

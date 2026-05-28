@@ -4,13 +4,14 @@
 import type { ApiCredentials } from './credentialsStore';
 import { fetchEbayApplicationToken, medianActiveListingPrice } from './ebayPriceProvider';
 import { fetchPriceChartingProduct, pickPriceChartingCents, type PcCondition } from './pricechartingProvider';
+import { resolveValueFromCoverLensResource } from './providers/coverLensResourceProvider';
 import { resolveRetailPriceFromGameplayStoresSearch } from './providers/gameplayStoresPriceProvider';
 import type { ValueSourcePreferences } from './valueSourcePreferences';
 
 export type ResolvedValueEstimate = {
   cents: number;
   currency: string;
-  source: 'gameplaystores' | 'pricecharting' | 'ebay';
+  source: 'coverlens' | 'gameplaystores' | 'pricecharting' | 'ebay';
 };
 
 export async function resolveValueEstimateFromPreferences(
@@ -31,6 +32,11 @@ export async function resolveValueEstimateFromPreferences(
   for (const id of prefs.order) {
     if (!prefs.enabled[id]) continue;
     switch (id) {
+      case 'coverlens': {
+        const c = await resolveValueFromCoverLensResource(t, plat);
+        if (c) return { cents: c.cents, currency: c.currency, source: 'coverlens' };
+        break;
+      }
       case 'gameplaystores': {
         const g = await resolveRetailPriceFromGameplayStoresSearch(t, plat);
         if (g) return { cents: g.cents, currency: g.currency, source: 'gameplaystores' };

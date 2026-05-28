@@ -72,3 +72,14 @@ Credenciales: IGDB, SteamGridDB y ScreenScraper en Ajustes (`credentialsStore`).
 | ScreenScraper | `services/providers/screenScraperProvider.ts` |
 | Texto de esta doc en la app | `constants/documentation/portadasYFuentesDoc.ts` |
 | Pantalla in-app | `app/documentacion-fuentes.tsx` |
+
+## Publicación y cumplimiento
+
+Antes de publicar en App Store / Google Play, revisar:
+
+- `docs/PRELANZAMIENTO_STORES_CHECKLIST.md`
+- `docs/FUENTES_Y_ATRIBUCIONES.md`
+- `docs/PLANTILLAS_SOLICITUD_PERMISOS.md`
+- `docs/PRIVACY_POLICY_ES.md`
+
+Nota: que la app sea gratuita y open source no sustituye permisos/licencias de contenido de terceros.

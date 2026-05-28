@@ -6,9 +6,10 @@ import * as SecureStore from 'expo-secure-store';
 
 const STORAGE_KEY = 'coverlens_cover_source_prefs_v1';
 
-export type CoverProviderId = 'gameplaystores' | 'steamgriddb' | 'igdb' | 'screenscraper';
+export type CoverProviderId = 'coverlens' | 'gameplaystores' | 'steamgriddb' | 'igdb' | 'screenscraper';
 
 export const ALL_COVER_PROVIDER_IDS: CoverProviderId[] = [
+  'coverlens',
   'gameplaystores',
   'steamgriddb',
   'igdb',
@@ -16,6 +17,7 @@ export const ALL_COVER_PROVIDER_IDS: CoverProviderId[] = [
 ];
 
 export const COVER_PROVIDER_LABELS: Record<CoverProviderId, string> = {
+  coverlens: 'CoverLens Resource',
   gameplaystores: 'GameplayStores',
   steamgriddb: 'SteamGridDB',
   igdb: 'IGDB (URL de metadatos si existe)',
@@ -30,6 +32,7 @@ export type CoverSourcePreferences = {
 export const DEFAULT_COVER_SOURCE_PREFERENCES: CoverSourcePreferences = {
   order: [...ALL_COVER_PROVIDER_IDS],
   enabled: {
+    coverlens: true,
     gameplaystores: true,
     steamgriddb: true,
     igdb: true,

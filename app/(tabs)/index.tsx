@@ -60,6 +60,8 @@ export default function HomeScreen() {
   const [sortMenuOpen, setSortMenuOpen] = React.useState(false);
   const [onlyFavorite, setOnlyFavorite] = React.useState(false);
   const [onlyDiscOnly, setOnlyDiscOnly] = React.useState(false);
+  const [onlySpanishText, setOnlySpanishText] = React.useState(false);
+  const [onlySpanishVoice, setOnlySpanishVoice] = React.useState(false);
   const [sort, setSort] = React.useState<CatalogSort>('added_desc');
   const [igdbClientId, setIgdbClientId] = React.useState<string>('');
 
@@ -83,8 +85,10 @@ export default function HomeScreen() {
       platform: platformFilter,
       onlyFavorite,
       onlyDiscOnly,
+      onlySpanishText,
+      onlySpanishVoice,
     }),
-    [search, platformFilter, onlyFavorite, onlyDiscOnly]
+    [search, platformFilter, onlyFavorite, onlyDiscOnly, onlySpanishText, onlySpanishVoice]
   );
 
   const displayedGames = React.useMemo(
@@ -321,6 +325,34 @@ export default function HomeScreen() {
             size={22}
             color={onlyDiscOnly ? '#ffffff' : theme.colors.textDim}
           />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.chip, onlySpanishText && styles.chipOn]}
+          onPress={() => setOnlySpanishText((v) => !v)}
+          accessibilityRole="button"
+          accessibilityState={{ selected: onlySpanishText }}
+          accessibilityLabel="Texto en castellano"
+        >
+          <Ionicons
+            name="language-outline"
+            size={15}
+            color={onlySpanishText ? '#ffffff' : theme.colors.textDim}
+          />
+          <Text style={[styles.chipText, onlySpanishText && styles.chipTextOn]}>Castellano</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.chip, onlySpanishVoice && styles.chipOn]}
+          onPress={() => setOnlySpanishVoice((v) => !v)}
+          accessibilityRole="button"
+          accessibilityState={{ selected: onlySpanishVoice }}
+          accessibilityLabel="Doblado al castellano"
+        >
+          <Ionicons
+            name="mic-outline"
+            size={15}
+            color={onlySpanishVoice ? '#ffffff' : theme.colors.textDim}
+          />
+          <Text style={[styles.chipText, onlySpanishVoice && styles.chipTextOn]}>Doblado</Text>
         </TouchableOpacity>
       </ScrollView>
       <TouchableOpacity

@@ -1,4 +1,5 @@
 import type { GameRecord } from '../database/dbConfig';
+import { gameHasSpanishText, gameHasSpanishVoice } from './utils/gameLanguages';
 import { gameMatchesPlatformFilter } from './utils/platformTokens';
 
 export type CatalogSort =
@@ -15,6 +16,10 @@ export type CatalogFilters = {
   platform: string | null;
   onlyFavorite: boolean;
   onlyDiscOnly: boolean;
+  /** Menús/subtítulos incluyen castellano */
+  onlySpanishText: boolean;
+  /** Doblaje incluye castellano */
+  onlySpanishVoice: boolean;
 };
 
 function compareTitle(a: GameRecord, b: GameRecord): number {
@@ -50,6 +55,8 @@ export function filterAndSortGames(
   }
   if (filters.onlyFavorite) list = list.filter((g) => g.favorite === 1);
   if (filters.onlyDiscOnly) list = list.filter((g) => g.discOnly === 1);
+  if (filters.onlySpanishText) list = list.filter((g) => gameHasSpanishText(g));
+  if (filters.onlySpanishVoice) list = list.filter((g) => gameHasSpanishVoice(g));
 
   const nullLast = (va: number | null | undefined, vb: number | null | undefined): number => {
     if (va == null && vb == null) return 0;
