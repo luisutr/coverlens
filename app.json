@@ -10,7 +10,8 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.coverlens.app",
+      "appleTeamId": "N5U2YLNP93",
+      "bundleIdentifier": "com.horusware.coverlens",
       "infoPlist": {
         "NSCameraUsageDescription": "CoverLens necesita la cámara para escanear códigos de barras y portadas de juegos.",
         "NSPhotoLibraryUsageDescription": "CoverLens necesita acceso a Fotos para seleccionar imágenes de juegos."

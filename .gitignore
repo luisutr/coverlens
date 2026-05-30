@@ -48,3 +48,8 @@ app-example
 # generated native folders
 /ios
 /android
+
+# local large folders and backups
+caratulas/
+_backup/
+Coverlens.code-workspace
