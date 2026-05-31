@@ -1,5 +1,6 @@
 import type { CoverSourcePreferences } from './coverSourcePreferences';
 import { loadCoverSourcePreferences } from './coverSourcePreferences';
+import { resolveCoverFromChollwebVps } from './providers/chollwebVpsProvider';
 import { resolveCoverFromGameplayStoresSearch } from './providers/gameplayStoresCoverProvider';
 import { resolveCoverFromScreenScraperSearch } from './providers/screenScraperProvider';
 import { resolveCoverFromSteamGridDb } from './providers/steamGridDbProvider';
@@ -29,6 +30,11 @@ export async function resolvePreferredCoverWithSource(
   for (const id of prefs.order) {
     if (!prefs.enabled[id]) continue;
     switch (id) {
+      case 'cholloweb': {
+        const u = await resolveCoverFromChollwebVps(t, platformHint);
+        if (u) return { url: u, source: 'cholloweb' };
+        break;
+      }
       case 'gameplaystores': {
         const u = await resolveCoverFromGameplayStoresSearch(t, platformHint);
         if (u) return { url: u, source: 'gameplaystores' };

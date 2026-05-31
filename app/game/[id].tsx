@@ -6,6 +6,7 @@ import {
   Alert,
   Dimensions,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -16,6 +17,7 @@ import {
   View,
 } from 'react-native';
 import { useFirstRunTour } from '../../contexts/FirstRunTourContext';
+import { ATTRIBUTIONS } from '../../constants/thirdPartyAttribution';
 import { theme } from '../../constants/theme';
 import {
   GameRecord,
@@ -307,17 +309,32 @@ export default function GameDetailScreen() {
         coverPrefs
       );
 
+      // La cabecera solo se descarga de IGDB si esa fuente está activa en preferencias
+      // Y el usuario tiene credenciales configuradas. Si no, se usa la portada de catálogo
+      // como cabecera (o se mantiene la existente si tampoco hay portada nueva).
       let nextHeader = game.headerImageUrl;
-      const creds = await getApiCredentials();
-      if (creds.igdbClientId?.trim() && creds.igdbClientSecret?.trim()) {
-        const igdb = await resolveFromIgdb({
-          titleHint: game.title,
-          platformHint: game.platform,
-          yearHint: game.releaseYear ?? undefined,
-        });
-        if (igdb && igdb.status !== 'error' && igdb.headerImageUrl?.trim()) {
-          nextHeader = igdb.headerImageUrl.trim();
+      let headerSource: string | null = null;
+
+      const igdbEnabled = coverPrefs.enabled['igdb'] ?? false;
+      if (igdbEnabled) {
+        const creds = await getApiCredentials();
+        if (creds.igdbClientId?.trim() && creds.igdbClientSecret?.trim()) {
+          const igdb = await resolveFromIgdb({
+            titleHint: game.title,
+            platformHint: game.platform,
+            yearHint: game.releaseYear ?? undefined,
+          });
+          if (igdb && igdb.status !== 'error' && igdb.headerImageUrl?.trim()) {
+            nextHeader = igdb.headerImageUrl.trim();
+            headerSource = 'IGDB';
+          }
         }
+      }
+
+      // Si IGDB no aportó cabecera y hay una portada de catálogo nueva, usarla como cabecera
+      if (nextHeader === game.headerImageUrl && url) {
+        nextHeader = url;
+        headerSource = source;
       }
 
       const merged = {
@@ -350,12 +367,12 @@ export default function GameDetailScreen() {
 
       const headerCambiada = nextHeader !== game.headerImageUrl;
       if (!url && !headerCambiada) {
-        Alert.alert('Portadas', 'No se encontró imagen de catálogo ni cabecera nueva (revisa credenciales IGDB si quieres la cabecera).');
+        Alert.alert('Portadas', 'No se encontró imagen de catálogo ni cabecera nueva.');
       } else {
         const lineas: string[] = [];
         if (url) lineas.push(`Catálogo: ${source ?? 'fuente desconocida'}.`);
         else lineas.push('Catálogo: sin cambios.');
-        if (headerCambiada) lineas.push('Cabecera: actualizada (IGDB).');
+        if (headerCambiada) lineas.push(`Cabecera: actualizada${headerSource ? ` (${headerSource})` : ''}.`);
         Alert.alert('Portadas', lineas.join('\n'));
       }
     } catch {
@@ -387,6 +404,25 @@ export default function GameDetailScreen() {
 
   const coverSourceLabel = inferCoverSourceLabel(game.coverUrl);
   const headerSourceLabel = inferCoverSourceLabel(game.headerImageUrl ?? null);
+
+  const METADATA_SOURCE_DISPLAY: Record<string, string> = {
+    cholloweb: 'CoverLens',
+    igdb: 'IGDB',
+    screenscraper: 'ScreenScraper',
+    gameupc: 'GameUPC',
+    gameplaystores: 'GameplayStores',
+  };
+  const metadataSourceDisplay = game.metadataSource
+    ? (METADATA_SOURCE_DISPLAY[game.metadataSource.toLowerCase()] ?? game.metadataSource)
+    : null;
+
+  const showIgdbAttribution =
+    headerSourceLabel === 'IGDB' ||
+    coverSourceLabel === 'IGDB' ||
+    game.metadataSource?.toLowerCase() === 'igdb';
+  const showSteamGridAttribution =
+    headerSourceLabel === 'SteamGridDB' || coverSourceLabel === 'SteamGridDB';
+  const showGameUpcAttribution = game.metadataSource?.toLowerCase() === 'gameupc';
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -434,8 +470,8 @@ export default function GameDetailScreen() {
                 <View style={[styles.statusDot, { backgroundColor: STATUS_COLOR[game.metadataStatus] ?? '#aaa' }]} />
                 <Text style={styles.statusLabel}>{game.metadataStatus.toUpperCase()}</Text>
               </View>
-              {game.metadataSource ? (
-                <Text style={styles.sourceLabel}>Ficha · {game.metadataSource}</Text>
+              {metadataSourceDisplay ? (
+                <Text style={styles.sourceLabel}>Ficha · {metadataSourceDisplay}</Text>
               ) : null}
               {game.headerImageUrl?.trim() && headerSourceLabel ? (
                 <Text style={styles.sourceLabel}>Cabecera · {headerSourceLabel}</Text>
@@ -445,6 +481,21 @@ export default function GameDetailScreen() {
                   {game.headerImageUrl?.trim() ? 'Catálogo · ' : 'Portada · '}
                   {coverSourceLabel}
                 </Text>
+              ) : null}
+              {showIgdbAttribution ? (
+                <TouchableOpacity onPress={() => void Linking.openURL(ATTRIBUTIONS.igdb.url)}>
+                  <Text style={styles.attributionLabel}>{ATTRIBUTIONS.igdb.text}</Text>
+                </TouchableOpacity>
+              ) : null}
+              {showSteamGridAttribution ? (
+                <TouchableOpacity onPress={() => void Linking.openURL(ATTRIBUTIONS.steamGridDb.url)}>
+                  <Text style={styles.attributionLabel}>{ATTRIBUTIONS.steamGridDb.text}</Text>
+                </TouchableOpacity>
+              ) : null}
+              {showGameUpcAttribution ? (
+                <TouchableOpacity onPress={() => void Linking.openURL(ATTRIBUTIONS.gameUpc.url)}>
+                  <Text style={styles.attributionLabel}>{ATTRIBUTIONS.gameUpc.text}</Text>
+                </TouchableOpacity>
               ) : null}
             </View>
             {!editing ? (
@@ -720,6 +771,12 @@ const styles = StyleSheet.create({
   statusDot: { width: 9, height: 9, borderRadius: 5 },
   statusLabel: { color: theme.colors.textLight, fontWeight: '700', fontSize: 12 },
   sourceLabel: { color: theme.colors.textDim, fontSize: 11 },
+  attributionLabel: {
+    color: theme.colors.textDim,
+    fontSize: 11,
+    marginTop: 2,
+    textDecorationLine: 'underline',
+  },
   editBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingVertical: 5, paddingHorizontal: 10, borderRadius: 8,

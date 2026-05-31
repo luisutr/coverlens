@@ -1,7 +1,8 @@
 /**
  * Documentación de portadas y fuentes (mantenimiento).
  * Pantalla: app/documentacion-fuentes.tsx
- * Copia en Markdown: docs/PORTADAS_Y_FUENTES.md (mantener alineados si cambia la lógica).
+ * Fuentes activas: CoverLens (integrado), ScreenScraper, SteamGridDB, IGDB, GameUPC, PriceCharting, eBay.
+ * GameplayStores desactivado (nivel C — sin confirmación de uso). Ver docs/FUENTES_TERCEROS_DECISION.md.
  */
 
 export type PortadasDocSection = {
@@ -13,47 +14,47 @@ export type PortadasDocSection = {
 export const PORTADAS_DOC_TITLE = 'Portadas y fuentes de datos';
 
 export const PORTADAS_DOC_FOOTNOTE =
-  'Copia para lectura en IDE o Git: docs/PORTADAS_Y_FUENTES.md. Código: services/coverPreferenceResolver.ts, services/metadataSourcePreferences.ts, services/providers/gameplayStoresCoverProvider.ts, services/providers/gameplayStoresMetadataProvider.ts, services/metadataResolver.ts.';
+  'Código relevante: services/coverPreferenceResolver.ts, services/metadataSourcePreferences.ts, services/providers/chollwebVpsProvider.ts, services/metadataResolver.ts. Decisión de fuentes: docs/FUENTES_TERCEROS_DECISION.md.';
 
 export const PORTADAS_Y_FUENTES_SECTIONS: PortadasDocSection[] = [
   {
     heading: 'Qué resuelve esta app',
     paragraphs: [
-      'CoverLens combina varias fuentes externas. No hay un único proveedor oficial de “carátula por título”: cada uno tiene huecos (juegos viejos, regiones, ediciones). Por eso encadenamos varios pasos y preferimos cajas que coincidan con plataforma cuando es posible.',
+      'CoverLens incorpora su propio servicio de reconocimiento de juegos — funciona sin cuenta ni configuración. Además puede conectar con fuentes externas opcionales que el usuario activa con sus propias credenciales para obtener metadatos más completos, portadas de mayor calidad o valoración económica.',
     ],
   },
   {
     heading: 'Orden al elegir la URL de portada',
     paragraphs: [
-      'La función resolvePreferredCoverUrl (services/coverPreferenceResolver.ts) prueba en este orden:',
+      'La función resolvePreferredCoverUrl (services/coverPreferenceResolver.ts) prueba en este orden (configurable en Ajustes → Catálogo):',
     ],
     bullets: [
-      'GameplayStores — solo si el juego tiene plataforma conocida y está mapeada a una categoría «Juegos …» de la tienda. Un GET JSON al buscador de PrestaShop con filtro id_category; elegimos el producto cuyo nombre (Título - PS2, etc.) encaja con el título y la plataforma. Suele acertar en stock PAL/espanol.',
-      'SteamGridDB — grids en tamaño moderado para ahorrar datos; buena cobertura pero a veces mezcla regiones o ediciones.',
+      'CoverLens (integrado) — catálogo propio; portadas curadas PAL/ESP. Primera en el orden; sin clave.',
+      'SteamGridDB — grids de alta calidad; requiere API key del usuario.',
+      'ScreenScraper — portadas y cajas regionales; usuario/contraseña del usuario.',
       'IGDB — URL de portada que ya venga del resultado de metadatos (si existe).',
-      'ScreenScraper — búsqueda por título/plataforma como último recurso; depende de credenciales y límites de la API.',
     ],
   },
   {
-    heading: 'GameplayStores: por qué y cómo (sin API pública)',
+    heading: 'Reconocimiento de barcode (EAN)',
     paragraphs: [
-      'GameplayStores (gameplaystores.es) no publica una API documentada para nosotros. Reutilizamos el mismo mecanismo que el escáner de código de barras: peticiones al buscador con Accept: application/json.',
-      'Para EAN: busqueda?s=<codigo> devuelve products[] con name tipo «Stellar Blade - PS5».',
-      'Para portada por título: busqueda?controller=search&s=<texto>&id_category=<id> acota a la categoría de juegos de esa plataforma (p. ej. Juegos PS2 → 1246). Así la primera página de resultados contiene candidatos de la plataforma correcta; el código filtra por similitud de título y por el sufijo de plataforma parseado con la misma lógica que el barcode (parseGamePlayStoresName en services/utils/barcodeToTitle.ts).',
-      'La URL de la tienda con mot_q / mot_s en el navegador es el buscador Motive en la web; para la app usamos el flujo anterior porque es estable con JSON y categoría.',
-      'Buenas prácticas: cada resolución de portada puede implicar al menos un GET a la tienda; en lotes grandes (Descargar portadas en lote) conviene no saturar: ya hay timeouts; si hiciera falta, aumentar pausas entre ítems.',
+      'El escáner intenta resolver el EAN con GameUPC si el usuario ha configurado su clave en Ajustes → APIs. Sin clave, el barcode no genera título automático pero puede añadirse a mano.',
+    ],
+    bullets: [
+      'GameUPC: fallback de barcode → título; requiere API key opcional del usuario.',
+      'GameplayStores: desactivado (sin confirmación de uso por parte de la tienda).',
     ],
   },
   {
     heading: 'Metadatos (título, ficha, estados)',
     paragraphs: [
-      'resolveMetadata (services/metadataResolver.ts) encadena fuentes según Ajustes → Catálogo → «Orden de fuentes (metadatos)» (services/metadataSourcePreferences.ts). Por defecto: GameplayStores → IGDB → ScreenScraper. La primera fuente con datos válidos manda en título y plataforma; las siguientes solo rellenan campos vacíos (año, género, descripción…). IGDB y ScreenScraper son opcionales si el usuario las desactiva o no tiene credenciales.',
+      'resolveMetadata (services/metadataResolver.ts) encadena fuentes según Ajustes → Catálogo → «Orden de fuentes (metadatos)» (services/metadataSourcePreferences.ts). Por defecto: CoverLens → ScreenScraper → IGDB. La primera fuente con datos válidos manda en título y plataforma; las siguientes solo rellenan campos vacíos (año, género, descripción…). ScreenScraper e IGDB son opcionales: el usuario los activa con sus credenciales.',
     ],
     bullets: [
-      'GameplayStores: EAN en busqueda?s=… o título+plataforma (findBestGameplayStoresProduct); parseGamePlayStoresName; no requiere API key.',
-      'IGDB: si está activo y hay Client ID/Secret Twitch, intenta EAN en external_games y luego búsqueda por título.',
-      'ScreenScraper: si está activo y hay usuario/contraseña, añade o completa datos y a veces portada.',
-      'Tras fusionar metadatos, la portada del catálogo sigue la cadena de «Orden de fuentes (portadas)» (puede sustituir la URL que trajera el metadato).',
+      'CoverLens (integrado): búsqueda por título+plataforma en el catálogo propio; sin clave; primera en el orden.',
+      'IGDB: si está activo y hay Client ID/Secret Twitch, busca por título y completa año, género, desarrollador y descripción.',
+      'ScreenScraper: si está activo y hay usuario/contraseña, añade o completa datos y a veces portada regional.',
+      'Tras fusionar metadatos, la portada del catálogo sigue la cadena de «Orden de fuentes (portadas)».',
     ],
   },
   {
@@ -65,7 +66,20 @@ export const PORTADAS_Y_FUENTES_SECTIONS: PortadasDocSection[] = [
   {
     heading: 'Dónde se usa en la UI',
     paragraphs: [
-      'En la ficha: «Completar metadatos» ejecuta la cadena de metadatos configurada y luego la de portadas; «Actualizar portada» solo la cadena de portadas (GameplayStores → SteamGrid → IGDB → ScreenScraper por defecto) sin tocar el resto de campos. La etiqueta «Portada · …» se infiere del host de la URL. Reintentar metadatos en lote y descarga de portadas en lote recalculan el estado con la misma regla.',
+      'En la ficha: «Completar metadatos» ejecuta la cadena de metadatos configurada y luego la de portadas; «Actualizar portada» solo la cadena de portadas (CoverLens → SteamGridDB → ScreenScraper → IGDB por defecto) sin tocar el resto de campos. La etiqueta «Portada · …» / «Ficha · …» se infiere del host de la URL o de la fuente que resolvió los metadatos. Reintentar metadatos en lote y descarga de portadas en lote recalculan el estado con la misma regla.',
+    ],
+  },
+  {
+    heading: 'Créditos de terceros',
+    paragraphs: [
+      'CoverLens muestra atribuciones cuando corresponde (Ajustes → Créditos y legal; ficha del juego). Solo se integran servicios con confirmación escrita o cuyos términos de uso CoverLens cumple con app gratuita y credenciales del usuario. Ver docs/FUENTES_TERCEROS_DECISION.md.',
+    ],
+    bullets: [
+      'IGDB: «Data freely provided by IGDB.com» — obligatorio por ToS de Twitch/IGDB.',
+      'SteamGridDB: enlace al proveedor — condición confirmada por escrito (Jozen, 2026-04-30).',
+      'ScreenScraper: crédito voluntario — uso confirmado por escrito (MarbleMad, 2026-05-11).',
+      'GameUPC: atribución recomendada — fallback de barcode con API key del usuario.',
+      'Política de privacidad: https://covers.cholloweb.es/privacidad',
     ],
   },
   {
@@ -74,9 +88,8 @@ export const PORTADAS_Y_FUENTES_SECTIONS: PortadasDocSection[] = [
     bullets: [
       'services/coverPreferenceResolver.ts — orden de portadas.',
       'services/metadataSourcePreferences.ts — orden y activación de fuentes de metadatos.',
-      'services/providers/gameplayStoresCoverProvider.ts — mapa plataforma → id_category y matching.',
-      'services/providers/gameplayStoresMetadataProvider.ts — metadatos desde listado GPS.',
-      'services/utils/barcodeToTitle.ts — parseo de nombres GPS y búsqueda por EAN.',
+      'services/providers/chollwebVpsProvider.ts — CoverLens integrado.',
+      'services/utils/barcodeToTitle.ts — resolución de EAN (GameUPC).',
       'services/metadataResolver.ts — fusión de metadatos y portada final.',
       'services/providers/steamGridDbProvider.ts — SteamGridDB.',
       'services/providers/screenScraperProvider.ts — ScreenScraper.',

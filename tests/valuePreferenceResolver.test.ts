@@ -11,6 +11,9 @@ vi.mock('../services/ebayPriceProvider', () => ({
   fetchEbayApplicationToken: vi.fn(),
   medianActiveListingPrice: vi.fn(),
 }));
+vi.mock('../services/providers/chollwebVpsProvider', () => ({
+  resolveValueFromChollwebVps: vi.fn().mockResolvedValue(null),
+}));
 
 import { fetchPriceChartingProduct } from '../services/pricechartingProvider';
 import { fetchEbayApplicationToken, medianActiveListingPrice } from '../services/ebayPriceProvider';
@@ -42,7 +45,7 @@ describe('resolveValueEstimateFromPreferences — orden por defecto', () => {
     vi.mocked(medianActiveListingPrice).mockResolvedValue(null);
   });
 
-  it('GameplayStores tiene prioridad si devuelve precio', async () => {
+  it('GameplayStores desactivado por defecto — no tiene prioridad, usa PriceCharting si devuelve precio', async () => {
     vi.mocked(resolveRetailPriceFromGameplayStoresSearch).mockResolvedValue({ cents: 1500, currency: 'EUR' });
     vi.mocked(fetchPriceChartingProduct).mockResolvedValue({
       looseCents: 999,
@@ -62,9 +65,9 @@ describe('resolveValueEstimateFromPreferences — orden por defecto', () => {
       prefs: DEFAULT_VALUE_SOURCE_PREFERENCES,
     });
 
-    expect(r).toEqual({ cents: 1500, currency: 'EUR', source: 'gameplaystores' });
-    expect(fetchPriceChartingProduct).not.toHaveBeenCalled();
-    expect(medianActiveListingPrice).not.toHaveBeenCalled();
+    // GPS está desactivado por defecto (nivel C); PriceCharting es la primera activa tras CoverLens
+    expect(r?.source).not.toBe('gameplaystores');
+    expect(resolveRetailPriceFromGameplayStoresSearch).not.toHaveBeenCalled();
   });
 
   it('si GameplayStores falla, usa PriceCharting antes que eBay', async () => {

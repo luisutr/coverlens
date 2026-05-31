@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { useFirstRunTour } from '../../contexts/FirstRunTourContext';
 import { theme } from '../../constants/theme';
+import { ATTRIBUTIONS, PRIVACY_POLICY_URL } from '../../constants/thirdPartyAttribution';
 import {
   GameRecord,
   deleteAllGames,
@@ -161,6 +162,7 @@ export default function AjustesScreen() {
     ebayClientId: '',
     ebayClientSecret: '',
     ebayMarketplaceId: 'EBAY_ES',
+    gameUpcApiKey: '',
   });
   const [saving, setSaving] = React.useState(false);
   const [diagLog, setDiagLog] = React.useState<string[]>([]);
@@ -590,6 +592,7 @@ export default function AjustesScreen() {
             ebayClientId: '',
             ebayClientSecret: '',
             ebayMarketplaceId: 'EBAY_ES',
+            gameUpcApiKey: '',
           });
           Alert.alert('Listo', 'Credenciales eliminadas.');
         },
@@ -802,9 +805,9 @@ export default function AjustesScreen() {
           <Text style={styles.coverPrefSectionTitle}>Orden de fuentes (portadas)</Text>
           <Text style={styles.coverPrefSectionHint}>
             Misma cadena que «Actualizar portadas» en la ficha y «Descargar portadas en lote». Arriba se prueba antes;
-            desactiva fuentes que no quieras usar.
+            desactiva fuentes que no quieras usar. CoverLens es la fuente integrada — el resto son opcionales.
           </Text>
-          {coverPrefs.order.map((id, index) => (
+          {coverPrefs.order.filter((id) => id !== 'gameplaystores').map((id, index, arr) => (
             <View key={id} style={styles.coverPrefRow}>
               <View style={{ flex: 1, marginRight: 8 }}>
                 <Text style={styles.coverPrefLabel}>{COVER_PROVIDER_LABELS[id]}</Text>
@@ -825,7 +828,7 @@ export default function AjustesScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => void persistCoverPrefs(moveCoverProvider(coverPrefs, id, 'down'))}
-                  disabled={index === coverPrefs.order.length - 1}
+                  disabled={index === arr.length - 1}
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel={`Bajar ${COVER_PROVIDER_LABELS[id]}`}
@@ -833,7 +836,7 @@ export default function AjustesScreen() {
                   <Ionicons
                     name="chevron-down"
                     size={22}
-                    color={index === coverPrefs.order.length - 1 ? '#333' : theme.colors.primary}
+                    color={index === arr.length - 1 ? '#333' : theme.colors.primary}
                   />
                 </TouchableOpacity>
                 <Switch
@@ -858,10 +861,9 @@ export default function AjustesScreen() {
           <Text style={styles.coverPrefSectionHint}>
             Escáner, búsqueda manual y «Completar metadatos» prueban cada fuente activa en este orden. Las primeras tienen
             prioridad si hay conflicto (p. ej. título y plataforma); las siguientes solo rellenan datos que falten.
-            GameplayStores no requiere clave. IGDB y ScreenScraper son opcionales: puedes desactivarlos si no quieres
-            usarlos o no tienes credenciales.
+            CoverLens es la fuente integrada. IGDB y ScreenScraper son opcionales: actívalos si tienes credenciales.
           </Text>
-          {metadataPrefs.order.map((id, index) => (
+          {metadataPrefs.order.filter((id) => id !== 'gameplaystores').map((id, index, arr) => (
             <View key={id} style={styles.coverPrefRow}>
               <View style={{ flex: 1, marginRight: 8 }}>
                 <Text style={styles.coverPrefLabel}>{METADATA_PROVIDER_LABELS[id]}</Text>
@@ -882,7 +884,7 @@ export default function AjustesScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => void persistMetadataPrefs(moveMetadataProvider(metadataPrefs, id, 'down'))}
-                  disabled={index === metadataPrefs.order.length - 1}
+                  disabled={index === arr.length - 1}
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel={`Bajar ${METADATA_PROVIDER_LABELS[id]}`}
@@ -890,7 +892,7 @@ export default function AjustesScreen() {
                   <Ionicons
                     name="chevron-down"
                     size={22}
-                    color={index === metadataPrefs.order.length - 1 ? '#333' : theme.colors.primary}
+                    color={index === arr.length - 1 ? '#333' : theme.colors.primary}
                   />
                 </TouchableOpacity>
                 <Switch
@@ -913,11 +915,10 @@ export default function AjustesScreen() {
         <View style={styles.coverPrefSection}>
           <Text style={styles.coverPrefSectionTitle}>Orden de fuentes (valor en ficha)</Text>
           <Text style={styles.coverPrefSectionHint}>
-            «Actualizar valor» en la ficha del juego prueba cada fuente activa en este orden. GameplayStores no requiere
-            clave (precio en tienda, EUR). PriceCharting y eBay usan las credenciales de abajo si están activas y
-            configuradas.
+            «Actualizar valor» en la ficha del juego prueba cada fuente activa en este orden. CoverLens aporta valor
+            de mercado integrado. PriceCharting y eBay son opcionales y usan las credenciales de abajo si están activas.
           </Text>
-          {valuePrefs.order.map((id, index) => (
+          {valuePrefs.order.filter((id) => id !== 'gameplaystores').map((id, index, arr) => (
             <View key={id} style={styles.coverPrefRow}>
               <View style={{ flex: 1, marginRight: 8 }}>
                 <Text style={styles.coverPrefLabel}>{VALUE_PROVIDER_LABELS[id]}</Text>
@@ -938,7 +939,7 @@ export default function AjustesScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => void persistValuePrefs(moveValueProvider(valuePrefs, id, 'down'))}
-                  disabled={index === valuePrefs.order.length - 1}
+                  disabled={index === arr.length - 1}
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel={`Bajar ${VALUE_PROVIDER_LABELS[id]}`}
@@ -946,7 +947,7 @@ export default function AjustesScreen() {
                   <Ionicons
                     name="chevron-down"
                     size={22}
-                    color={index === valuePrefs.order.length - 1 ? '#333' : theme.colors.primary}
+                    color={index === arr.length - 1 ? '#333' : theme.colors.primary}
                   />
                 </TouchableOpacity>
                 <Switch
@@ -1068,6 +1069,32 @@ export default function AjustesScreen() {
           hint="Portadas, metadatos (GameplayStores, IGDB…), valor y credenciales opcionales"
           onPress={() => router.push('/documentacion-fuentes')}
         />
+
+        <View style={styles.divider} />
+        <View style={styles.coverPrefSection}>
+          <Text style={styles.coverPrefSectionTitle}>Créditos y legal</Text>
+          <Text style={styles.coverPrefSectionHint}>
+            Atribuciones requeridas o recomendadas por los proveedores de datos e imágenes integrados en CoverLens.
+          </Text>
+          <TouchableOpacity onPress={() => void Linking.openURL(ATTRIBUTIONS.igdb.url)}>
+            <Text style={styles.attributionLine}>{ATTRIBUTIONS.igdb.text}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => void Linking.openURL(ATTRIBUTIONS.steamGridDb.url)}>
+            <Text style={styles.attributionLine}>{ATTRIBUTIONS.steamGridDb.text}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => void Linking.openURL(ATTRIBUTIONS.screenScraper.url)}>
+            <Text style={styles.attributionLine}>{ATTRIBUTIONS.screenScraper.text}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => void Linking.openURL(ATTRIBUTIONS.gameUpc.url)}>
+            <Text style={styles.attributionLine}>{ATTRIBUTIONS.gameUpc.text}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
+            style={{ marginTop: 12 }}
+          >
+            <Text style={styles.link}>Política de privacidad →</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* ── Sección 2: APIs de metadatos (colapsable) ───────────────────────── */}
@@ -1115,6 +1142,9 @@ export default function AjustesScreen() {
           <TouchableOpacity onPress={() => void Linking.openURL(providerLinks.igdb)}>
             <Text style={styles.link}>Crear app en Twitch Dev Console →</Text>
           </TouchableOpacity>
+          <TouchableOpacity onPress={() => void Linking.openURL(ATTRIBUTIONS.igdb.url)}>
+            <Text style={styles.attributionLine}>{ATTRIBUTIONS.igdb.text}</Text>
+          </TouchableOpacity>
         </View>
 
         {/* SteamGridDB */}
@@ -1132,6 +1162,9 @@ export default function AjustesScreen() {
           {field('API Key', 'steamGridDbApiKey', 'tu-api-key')}
           <TouchableOpacity onPress={() => void Linking.openURL(providerLinks.steamGridDb)}>
             <Text style={styles.link}>Obtener API key →</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => void Linking.openURL(ATTRIBUTIONS.steamGridDb.url)}>
+            <Text style={styles.attributionLine}>{ATTRIBUTIONS.steamGridDb.text}</Text>
           </TouchableOpacity>
         </View>
 
@@ -1193,6 +1226,26 @@ export default function AjustesScreen() {
           <Text style={[styles.sectionHint, { marginTop: 8 }]}>
             Prueba: guarda credenciales, «Ejecutar diagnóstico» (token OK) y en la ficha el botón eBay.
           </Text>
+        </View>
+
+        {/* GameUPC */}
+        <View style={styles.subsection}>
+          <View style={styles.subsectionHeader}>
+            <Text style={styles.subsectionTitle}>GameUPC — barcode fallback</Text>
+            <View style={styles.badgeOptional}>
+              <Text style={styles.badgeOptionalText}>Opcional</Text>
+            </View>
+          </View>
+          <Text style={styles.sectionHint}>
+            Solo si GameplayStores no resuelve el EAN. Requiere tu API key en gameupc.com; sin clave no se consulta.
+          </Text>
+          {field('GameUPC API Key', 'gameUpcApiKey', 'tu-api-key', true)}
+          <TouchableOpacity onPress={() => void Linking.openURL(providerLinks.gameUpc)}>
+            <Text style={styles.link}>Registrarse en GameUPC →</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => void Linking.openURL(ATTRIBUTIONS.gameUpc.url)}>
+            <Text style={styles.attributionLine}>{ATTRIBUTIONS.gameUpc.text}</Text>
+          </TouchableOpacity>
         </View>
 
             <TouchableOpacity
@@ -1437,6 +1490,12 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     textDecorationLine: 'underline',
     fontSize: 12,
+  },
+  attributionLine: {
+    marginTop: 8,
+    color: theme.colors.textDim,
+    fontSize: 12,
+    textDecorationLine: 'underline',
   },
   // Botón guardar
   btnPrimary: {

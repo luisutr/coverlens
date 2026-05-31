@@ -6,10 +6,14 @@ vi.mock('../services/providers/igdbProvider', () => ({
 vi.mock('../services/providers/screenScraperProvider', () => ({
   resolveFromScreenScraper: vi.fn(),
 }));
+vi.mock('../services/providers/chollwebVpsProvider', () => ({
+  resolveFromChollwebVps: vi.fn().mockResolvedValue(null),
+}));
 vi.mock('../services/coverSourcePreferences', () => ({
   loadCoverSourcePreferences: vi.fn(async () => ({
     order: ['gameplaystores', 'steamgriddb', 'igdb', 'screenscraper'],
     enabled: {
+      cholloweb: false,
       gameplaystores: true,
       steamgriddb: true,
       igdb: true,
@@ -38,7 +42,7 @@ vi.mock('../services/providers/gameplayStoresCoverProvider', () => ({
 vi.mock('../services/metadataSourcePreferences', () => ({
   loadMetadataSourcePreferences: vi.fn(async () => ({
     order: ['gameplaystores', 'igdb', 'screenscraper'],
-    enabled: { gameplaystores: true, igdb: true, screenscraper: true },
+    enabled: { cholloweb: false, gameplaystores: true, igdb: true, screenscraper: true },
   })),
 }));
 vi.mock('../services/providers/gameplayStoresMetadataProvider', () => ({

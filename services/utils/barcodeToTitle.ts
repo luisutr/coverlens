@@ -1,18 +1,18 @@
 /**
  * Convierte un barcode EAN/UPC en título de juego y plataforma.
  *
- * Fuente principal: gameplaystores.es (PrestaShop JSON, sin autenticación)
- * Formato de respuesta: { products: [{ name: "Stellar Blade - PS5", ... }] }
+ * Fuente: GameUPC (campo searched_for) — clave opcional del usuario.
  *
- * Fallback: GameUPC (campo searched_for)
+ * GameplayStores desactivado (nivel C — sin confirmación de uso).
+ * El código de GPS se mantiene en este archivo para posible reactivación.
  */
 
 import { fetchWithTimeout } from './networkUtils';
 import { canonicalizePlatform } from './platformUtils';
+import { getApiCredentials } from '../credentialsStore';
 
 const GAMEPLAYSTORES_URL = 'https://www.gameplaystores.es/busqueda';
-const GAMEUPC_URL = 'https://api.gameupc.com/test/upc';
-const GAMEUPC_KEY = 'test_test_test_test_test';
+const GAMEUPC_URL = 'https://api.gameupc.com/upc';
 
 export type BarcodeResult = {
   title: string;
@@ -243,10 +243,12 @@ async function fromGamePlayStores(barcode: string): Promise<BarcodeResult | null
   return null;
 }
 
-async function fromGameUpc(barcode: string): Promise<BarcodeResult | null> {
+async function fromGameUpc(barcode: string, apiKey: string): Promise<BarcodeResult | null> {
+  const key = apiKey.trim();
+  if (!key) return null;
   try {
     const res = await fetchWithTimeout(`${GAMEUPC_URL}/${encodeURIComponent(barcode)}?search_mode=quality`, {
-      headers: { 'x-api-key': GAMEUPC_KEY },
+      headers: { 'x-api-key': key },
     }, 10000);
     if (!res.ok) return null;
     const data = (await res.json()) as { searched_for?: string; name?: string };
@@ -327,10 +329,12 @@ export async function barcodeToTitle(barcode: string): Promise<BarcodeResult | n
   const clean = barcode.replace(/\s/g, '');
   console.log('[barcodeToTitle] Buscando barcode:', clean);
 
-  const fromGPS = await fromGamePlayStores(clean);
-  if (fromGPS) return fromGPS;
+  // GPS desactivado — nivel C (gameplaystores.es, sin confirmación de uso)
+  // const fromGPS = await fromGamePlayStores(clean);
+  // if (fromGPS) return fromGPS;
 
-  const fromGUpc = await fromGameUpc(clean);
+  const creds = await getApiCredentials();
+  const fromGUpc = await fromGameUpc(clean, creds.gameUpcApiKey);
   if (fromGUpc) return fromGUpc;
 
   return null;

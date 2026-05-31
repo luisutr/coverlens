@@ -1,19 +1,21 @@
 /**
  * Preferencias de orden y activación para la cadena de metadatos de ficha (título, plataforma, texto, portada de metadatos).
- * GameplayStores no requiere credenciales; IGDB (Twitch) y ScreenScraper son opcionales según Ajustes.
+ * CoverLens es la fuente integrada por defecto. IGDB y ScreenScraper son opcionales (credenciales del usuario).
+ * GameplayStores desactivado (nivel C — sin confirmación de uso).
  */
 import * as SecureStore from 'expo-secure-store';
 
 const STORAGE_KEY = 'coverlens_metadata_source_prefs_v1';
 
-export type MetadataProviderId = 'gameplaystores' | 'igdb' | 'screenscraper';
+export type MetadataProviderId = 'cholloweb' | 'gameplaystores' | 'igdb' | 'screenscraper';
 
-export const ALL_METADATA_PROVIDER_IDS: MetadataProviderId[] = ['gameplaystores', 'igdb', 'screenscraper'];
+export const ALL_METADATA_PROVIDER_IDS: MetadataProviderId[] = ['cholloweb', 'gameplaystores', 'igdb', 'screenscraper'];
 
 export const METADATA_PROVIDER_LABELS: Record<MetadataProviderId, string> = {
-  gameplaystores: 'GameplayStores (listado tienda, sin clave)',
-  igdb: 'IGDB (Twitch — ficha y datos extra)',
-  screenscraper: 'ScreenScraper (usuario/contraseña)',
+  cholloweb: 'CoverLens (integrado, sin clave)',
+  gameplaystores: 'GameplayStores (desactivado)',
+  igdb: 'IGDB (opcional — credenciales Twitch)',
+  screenscraper: 'ScreenScraper (opcional — usuario/contraseña)',
 };
 
 export type MetadataSourcePreferences = {
@@ -24,7 +26,8 @@ export type MetadataSourcePreferences = {
 export const DEFAULT_METADATA_SOURCE_PREFERENCES: MetadataSourcePreferences = {
   order: [...ALL_METADATA_PROVIDER_IDS],
   enabled: {
-    gameplaystores: true,
+    cholloweb: true,
+    gameplaystores: false, // nivel C — sin confirmación de uso
     igdb: true,
     screenscraper: true,
   },

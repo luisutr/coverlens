@@ -4,7 +4,8 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
 ## Documentación del proyecto (CoverLens)
 
-- **Portadas y fuentes:** [docs/PORTADAS_Y_FUENTES.md](docs/PORTADAS_Y_FUENTES.md) — orden de resolución (GameplayStores, SteamGridDB, IGDB, ScreenScraper), uso del buscador JSON de la tienda, metadatos y archivos clave.
+- **Portadas y fuentes:** [docs/PORTADAS_Y_FUENTES.md](docs/PORTADAS_Y_FUENTES.md) — CoverLens integrado como fuente principal; terceros opcionales (ScreenScraper, SteamGridDB, IGDB, GameUPC, PriceCharting, eBay). GameplayStores desactivado.
+- **Privacidad y cumplimiento:** [docs/PRIVACY_POLICY_ES.md](docs/PRIVACY_POLICY_ES.md) (política pública), [docs/privacidad/index.html](docs/privacidad/index.html) (HTML para VPS), [docs/API_TERMS_COMPLIANCE.md](docs/API_TERMS_COMPLIANCE.md) (registro legal APIs), [docs/FUENTES_TERCEROS_DECISION.md](docs/FUENTES_TERCEROS_DECISION.md) (decisión de fuentes terceros), [PRIVACY_APP_STORE_NOTES.md](PRIVACY_APP_STORE_NOTES.md) (notas para tiendas). Regenerar HTML: `node scripts/build-privacy-html.mjs`.
 - **Texto en la app:** Ajustes → «Documentación: portadas y fuentes» (sale de `constants/documentation/portadasYFuentesDoc.ts`; si cambias la lógica, actualiza ese módulo y el Markdown).
 - **Flujo Android + iOS:** [docs/WORKFLOW_ANDROID_IOS.md](docs/WORKFLOW_ANDROID_IOS.md) — estructura de ramas, merges y setup recomendado para desarrollo paralelo sin conflictos.
 

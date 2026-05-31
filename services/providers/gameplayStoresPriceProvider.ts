@@ -1,3 +1,10 @@
+/*
+ * INTEGRACIÓN DESACTIVADA — GameplayStores (nivel C)
+ * Sin confirmación de uso por parte de la tienda (2 contactos sin respuesta).
+ * Código mantenido para posible reactivación si se obtiene autorización.
+ * Ver docs/FUENTES_TERCEROS_DECISION.md §6.
+ */
+
 /**
  * Precio «en tienda» desde gameplaystores.es (misma búsqueda JSON que portadas).
  * Sin API key; el listado incluye `price` tipo "7,95 €" (EUR, impuestos incluidos en tienda).

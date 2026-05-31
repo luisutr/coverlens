@@ -1,3 +1,10 @@
+/*
+ * INTEGRACIÓN DESACTIVADA — GameplayStores (nivel C)
+ * Sin confirmación de uso por parte de la tienda (2 contactos sin respuesta).
+ * Código mantenido para posible reactivación si se obtiene autorización.
+ * Ver docs/FUENTES_TERCEROS_DECISION.md §6.
+ */
+
 /**
  * Portadas desde gameplaystores.es: búsqueda JSON de PrestaShop acotada por categoría «Juegos …».
  * Misma base que el escaneo por EAN (`barcodeToTitle`), sin API key; conviene no abusar (un GET por resolución).

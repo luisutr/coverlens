@@ -1,19 +1,21 @@
 /**
  * Preferencias de orden y activación para la cadena de valor / cotización en ficha.
- * Sin secretos; SecureStore como en portadas.
+ * CoverLens es la fuente integrada por defecto. PriceCharting y eBay son opcionales (credenciales del usuario).
+ * GameplayStores desactivado (nivel C — sin confirmación de uso).
  */
 import * as SecureStore from 'expo-secure-store';
 
 const STORAGE_KEY = 'coverlens_value_source_prefs_v1';
 
-export type ValueProviderId = 'gameplaystores' | 'pricecharting' | 'ebay';
+export type ValueProviderId = 'cholloweb' | 'gameplaystores' | 'pricecharting' | 'ebay';
 
-export const ALL_VALUE_PROVIDER_IDS: ValueProviderId[] = ['gameplaystores', 'pricecharting', 'ebay'];
+export const ALL_VALUE_PROVIDER_IDS: ValueProviderId[] = ['cholloweb', 'gameplaystores', 'pricecharting', 'ebay'];
 
 export const VALUE_PROVIDER_LABELS: Record<ValueProviderId, string> = {
-  gameplaystores: 'GameplayStores (precio en tienda, EUR)',
-  pricecharting: 'PriceCharting Pro (guía USD)',
-  ebay: 'eBay (mediana anuncios activos)',
+  cholloweb: 'CoverLens (integrado, valor EUR)',
+  gameplaystores: 'GameplayStores (desactivado)',
+  pricecharting: 'PriceCharting Pro (opcional — guía USD)',
+  ebay: 'eBay (opcional — mediana anuncios activos)',
 };
 
 export type ValueSourcePreferences = {
@@ -24,7 +26,8 @@ export type ValueSourcePreferences = {
 export const DEFAULT_VALUE_SOURCE_PREFERENCES: ValueSourcePreferences = {
   order: [...ALL_VALUE_PROVIDER_IDS],
   enabled: {
-    gameplaystores: true,
+    cholloweb: true,
+    gameplaystores: false, // nivel C — sin confirmación de uso
     pricecharting: true,
     ebay: true,
   },

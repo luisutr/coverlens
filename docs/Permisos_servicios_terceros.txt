@@ -1,0 +1,128 @@
+ScreenScraper
+--------------
+luisutr — 10/5/26, 17:06Hello. My name is Luis Utrilla. I have a cuestion. --> Clarification request for ScreenScraper API/media usage in free mobile appBonjour / Hello ScreenScraper team,I am , developer of CoverLens, a free and open-source app for personal videogame cataloging.Before publishing on app stores, I want to ensure compliance with ScreenScraper terms and media licensing.Could you please confirm:Whether CoverLens may use ScreenScraper API data/media in a public free app.Whether local thumbnail caching is permitted.Required attribution text and placement.Any specific restrictions for distribution on Apple App Store / Google Play.We will follow your requirements and can disable integration if needed.Thank you for your guidance.MarbleMad — 11/5/26, 13:00Whether CoverLens may use ScreenScraper API data/media in a public free app : YESWhether local thumbnail caching is permitted : YESRequired attribution text and placement : Nothing is mandatory.Any specific restrictions for distribution on Apple App Store / Google Play : As long as the application remains free, there are no restrictions.
+-
+
+SteamGridDB
+------------
+
+Hello SteamGridDB team,
+
+I am Luis Utrilla, developer of CoverLens, a free and open-source mobile app for personal game collection cataloging.
+
+I would like to request written permission/clarification to use SteamGridDB API/image assets in a publicly distributed mobile app (Apple App Store and Google Play), specifically:
+
+fetching cover images for user-selected games,
+
+displaying attribution inside the app,
+
+optional local thumbnail caching for performance.
+
+Project context:
+
+free app, no subscription/paywall,
+
+open-source codebase,
+
+willing to comply with any attribution or technical requirements you specify.
+
+Could you confirm whether this use is allowed and under which conditions?
+
+Best regards,
+
+
+--
+
+
+Luis Utrilla
+
+about.me/luisutrilla
+luisutr@gmail.com
+
+ Imágenes integradas 3 Imágenes integradas 4
+
+
+Jozen Martinez
+jue, 30 abr, 7:27
+para mí
+
+Parece que este mensaje está en inglés
+Hi Luis,
+
+For your use case, as long as there's attribution somewhere in your app everything will be fine, somewhere that links to the page of the specific asset used would also be great but is not required.
+Something that is a requirement would be if users are hitting the API directly from your app, you let them set their own key. Otherwise if you want to use a single key for everything, have the API go through a proxy server you control and just hit that server instead. If you go this route, you only need to cache the JSON response, not the image. Some caching of at least a few hours would be great too.
+
+Regards,
+Jozen
+
+Luis Utrilla <luisutr@gmail.com>
+jue, 30 abr, 9:50
+para Jozen
+
+Hi Jozen,
+
+Thank you so much for your reply.
+
+That's right, that's how the application is configured: each user must register with your service and use their own API key. While the app can function without this integration, it's an option I recommend so users can obtain better data and images of their games thanks to your service.
+
+Of course, I'll include a mention with a link to your project; it's a fantastic tool, and I'll be happy to do so.
+
+Thank you so much for everything. Please let me know if you need anything else.
+
+Best regards,
+
+Luis Utrilla
+
+
+IGDB
+----
+La API de IGDB (Internet Game Database), propiedad de Twitch, es gratuita para proyectos no comerciales y de código abierto. Sin embargo, para integrarla en aplicaciones móviles existen normas técnicas y de uso que debes cumplir obligatoriamente para evitar que tu cuenta y claves de acceso sean suspendidas.1. Políticas de Uso y RestriccionesProhibido exponer las claves (Secrets) en la App: Nunca incluyas tu Client ID y Client Secret directamente en el código de tu aplicación móvil (Android/iOS). Los usuarios podrían decompilar la app y robar tus credenciales.Modelo de Negocio: Si tu aplicación va a contener anuncios, compras dentro de la app o requiere suscripciones, se considera de uso comercial. En este caso, debes contactar a Twitch (partner@igdb.com) para obtener una licencia comercial de pago.Uso justo y Atribución: Debes acreditar visiblemente a la plataforma incluyendo un texto estático visible por el usuario que indique: “Data freely provided by IGDB.com”.Comunidad y Contenido: Las reseñas, comentarios o contenido generado por el usuario (UGC) que muestres en tu app deben seguir en todo momento las Directrices de la Comunidad de Twitch.2. Límites y Políticas TécnicasLímite de peticiones: Existe un límite estricto de 4 solicitudes por segundo, con un máximo de 8 solicitudes abiertas simultáneamente. Si superas esto, recibirás el error 429 (Too Many Requests).Almacenamiento (Caché) permitido: IGDB permite y recomienda almacenar/cachear la información de los videojuegos de forma local en tu servidor o dispositivo. Esto reduce la presión sobre sus servidores y hace que tu aplicación sea más rápida y funcione sin conexión.3. Buenas prácticas de arquitectura para móvilesPara proteger tus credenciales y no sobrepasar los límites de la API, no debes conectar tu aplicación móvil directamente a IGDB.La arquitectura recomendada consiste en:Tu propio servidor Backend (Proxy): Creas una API intermedia en tu propio servidor (p. ej., usando Node.js, PHP, AWS Lambda).Autenticación centralizada: Tu backend se encarga de solicitar el token de acceso a Twitch usando el Client ID y Client Secret.El puente móvil: La app móvil hace peticiones a tu propio servidor y este, actuando como proxy, consulta a IGDB. De esta forma, tus credenciales maestras nunca salen de tu servidor privado.Para más detalles técnicos y el proceso paso a paso de registro de la aplicación, consulta la documentación oficial en el Portal para Desarrolladores de Twitch y la Guía de Inicio de la API de IGDB.
+
+EBAY
+----
+La integración de la API de eBay en aplicaciones móviles requiere el cumplimiento estricto del Acuerdo de Licencia de la API de eBay. Los desarrolladores tienen prohibido usar datos de eBay para entrenar modelos de Inteligencia Artificial (IA), extraer información sobre otros vendedores, o mostrar perfiles privados que no pertenezcan al usuario autenticado.1. Políticas Clave de Uso y DatosPrivacidad del usuario: No puedes derivar ni mostrar precios de reserva, tarifas de conversión o el perfil detallado de otros usuarios, a menos que esa información pertenezca al usuario que ha iniciado sesión en tu aplicación móvil.Entrenamiento de IA: Está terminantemente prohibido utilizar el contenido o los datos de eBay para entrenar modelos de IA generativa o ingerir datos de eBay en estas herramientas.Notificaciones de borrado: Si tu aplicación almacena datos de los usuarios de eBay, debes integrarte con las notificaciones de cierre/eliminación de cuentas del marketplace.2. Autenticación y SeguridadDebes utilizar OAuth 2.0 para la autorización segura. Si tu aplicación ofrece la opción de iniciar sesión, es muy recomendable implementar el botón "Sign-in with eBay" para una mejor experiencia de usuario.La cuenta del desarrollador debe contar con información de contacto precisa y actualizada.3. Directrices de Visualización y TarifasTransparencia en tarifas: Si tu app permite a los vendedores publicar artículos, debes informarles sobre las tarifas de eBay aplicables antes de confirmar la publicación.Las directrices de eBay sobre la estandarización de tallas, categorías y condiciones de los artículos deben respetarse rigurosamente para evitar bloqueos en los listados.4. Límites de Llamadas (Rate Limits)Cada API de eBay tiene límites de llamadas independientes diseñados para evitar el abuso. Por ejemplo, recursos como la API de Post-Order (devoluciones, casos, cancelaciones) tienen límites estrictos de hasta 5,000 llamadas por día.Puedes monitorear tu cuota diaria utilizando la llamada getRateLimits de la API de Developer's Analytics.Para comenzar con el desarrollo, es necesario registrarse gratuitamente en el Programa para Desarrolladores de eBay y obtener tus credenciales (App ID y Cert ID) desde la página de Application Keys.
+
+PriceCharting
+-------------
+La API de PriceCharting está diseñada para uso personal o comercial, pero su uso y redistribución en aplicaciones móviles están estrictamente regulados por sus Condiciones de Servicio.Las políticas y restricciones principales para integrar sus datos en aplicaciones son:Suscripción de Pago Obligatoria: Necesitas una suscripción activa a la guía de precios (Price Guide) para obtener tu token API.Límites de Petición (Rate Limits): Las llamadas directas están limitadas a 1 solicitud por segundo. Si superas este límite, bloquearán tu acceso.Uso Restringido: Puedes usar los datos en tu aplicación, pero no puedes revender, republicar o regalar los datos sin su consentimiento por escrito.Propiedad de los Datos: Todos los precios e información pertenecen a PriceCharting. No adquieres ningún derecho de autor ni propiedad sobre los datos al consumirlos.Buenas prácticas recomendadas para móvilesPara no superar los límites de llamadas de la API ni sobrecargar la experiencia de tu usuario:Uso de archivos CSV: Si necesitas actualizar miles de productos o descargar el catálogo completo de una categoría (juegos retro, cartas, etc.), debes usar la descarga de archivos CSV, disponible a través de tu cuenta de minorista.Uso de caché local: Puedes almacenar temporalmente los precios en el almacenamiento local del dispositivo móvil (caché) para evitar hacer consultas a la API cada vez que el usuario abre la misma pantalla.No realizar llamadas innecesarias: Programa las peticiones de actualización de tu app para que ocurran con baja frecuencia (por ejemplo, una vez al día, ya que el mercado de coleccionables no suele fluctuar en períodos cortos de tiempo).
+
+GameUPC
+--------
+La API de api.gameupc.com es una interfaz REST de uso público para plataformas de crowdsourcing y bases de datos GameUPC. Al incorporarla en aplicaciones móviles, debes cumplir con las siguientes directrices esenciales para evitar bloqueos y garantizar un funcionamiento legal y técnico:Sin límite oficial explícito: La API es ligera y de fácil consumo, pero exige el cumplimiento de estándares de buen uso para evitar saturar el servidor.Almacenamiento local: Respeta la normativa de derechos de autor de las bases de datos. No dupliques ni extraigas masivamente la información (scraping) para revenderla.Gestión de Datos Personales (LOPD/GDPR): Si tu app recopila datos de los usuarios junto con la información de los videojuegos, estás obligado a integrar una política de privacidad en tu aplicación.Atribución: Si utilizas datos, textos o carátulas provenientes de la plataforma, debes dar el crédito correspondiente a los creadores y a GameUPC.
+
+CoverLens VPS (covers.cholloweb.es)
+------------------------------------
+Servidor propio del desarrollador (Luis Utrilla). Catálogo web público en https://covers.cholloweb.es/catalogo.
+
+API usada por la app móvil:
+- GET /api/browse.php?q=...&platform=... — búsqueda de juegos (metadatos resumidos, portada, valor EUR)
+- GET /games/{platformSlug}/{slug}.json — ficha completa (género, developer, publisher, descripción, etc.)
+- GET /games/platforms.json — listado de plataformas
+
+Portadas servidas desde https://covers.cholloweb.es/covers/{platform}/{slug}.jpg|webp
+
+Estado legal: infraestructura propia; no hay ToS de tercero. Política de privacidad en docs/PRIVACY_POLICY_ES.md.
+
+Datos agregados upstream en el catálogo VPS (p. ej. RAWG, IGDB en fichas individuales). La app consume el VPS directamente; no llama a RAWG ni a esas fuentes upstream.
+
+Privacidad: las peticiones envían términos de búsqueda (título, plataforma). No se envían credenciales del usuario ni datos de identificación personal. No hay registro ni login en el VPS.
+
+Buen uso: evitar lotes masivos sin pausa entre peticiones (CoverLens incluye delay en «Descargar portadas en lote» en Ajustes).
+
+Código app: services/providers/chollwebVpsProvider.ts
+
+GameplayStores (gameplaystores.es)
+-----------------------------------
+Tienda online española. No publica API documentada para integradores.
+
+Uso en CoverLens:
+- Buscador JSON público: GET https://www.gameplaystores.es/busqueda (barcode, título+plataforma)
+- Parseo HTML de ficha de producto para género, descripción, año, precio EUR
+
+Funciones: barcode → título, metadatos de ficha, portadas, precio en tienda.
+
+Estado legal: sin confirmación escrita de la tienda. Correos de solicitud enviados 2 veces, sin respuesta. Uso del listado público (mismo patrón que navegador). Decisión: mantener como fuente opcional desactivable; VPS prioritario. No reintentar por email salvo nuevo contacto.
+
+Buen uso: timeouts en peticiones; pausas en descarga en lote; no scraping masivo de fichas HTML.
+
+Código app: services/providers/gameplayStoresCoverProvider.ts, gameplayStoresMetadataProvider.ts, gameplayStoresPriceProvider.ts, services/utils/barcodeToTitle.ts

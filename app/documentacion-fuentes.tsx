@@ -7,8 +7,8 @@ export default function DocumentacionFuentesScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.lead}>
-        Referencia para pruebas y mantenimiento: cómo se eligen las portadas, qué es GameplayStores en código y dónde
-        tocar si cambia el comportamiento.
+        Referencia para pruebas y mantenimiento: cómo se eligen las portadas y metadatos, qué fuentes están activas
+        (CoverLens integrado + terceros opcionales) y dónde tocar si cambia el comportamiento.
       </Text>
 
       {PORTADAS_Y_FUENTES_SECTIONS.map((sec) => (

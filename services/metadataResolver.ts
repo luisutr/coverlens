@@ -2,6 +2,7 @@ import { loadCoverSourcePreferences } from './coverSourcePreferences';
 import { loadMetadataSourcePreferences } from './metadataSourcePreferences';
 import { mergeMetadataLayers, isUsableMetadataLayer } from './metadataLayerMerge';
 import { resolvePreferredCoverWithSource } from './coverPreferenceResolver';
+import { resolveFromChollwebVps } from './providers/chollwebVpsProvider';
 import { resolveFromGameplayStoresMetadata } from './providers/gameplayStoresMetadataProvider';
 import { resolveFromIgdb } from './providers/igdbProvider';
 import { resolveFromScreenScraper } from './providers/screenScraperProvider';
@@ -55,7 +56,9 @@ export async function resolveMetadata(input: ResolveInput): Promise<MetadataResu
     if (!metaPrefs.enabled[id]) continue;
 
     let layer: MetadataResult | null = null;
-    if (id === 'gameplaystores') {
+    if (id === 'cholloweb') {
+      layer = await resolveFromChollwebVps(working);
+    } else if (id === 'gameplaystores') {
       layer = await resolveFromGameplayStoresMetadata(working);
     } else if (id === 'igdb') {
       layer = await resolveFromIgdb(working);

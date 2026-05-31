@@ -62,6 +62,7 @@ export default function OnboardingScreen() {
     ebayClientId: '',
     ebayClientSecret: '',
     ebayMarketplaceId: 'EBAY_ES',
+    gameUpcApiKey: '',
   });
 
   React.useEffect(() => {
@@ -140,7 +141,7 @@ export default function OnboardingScreen() {
               <Image source={require('../assets/images/icon.png')} style={styles.logo} contentFit="contain" />
               <View style={{ flex: 1 }}>
                 <Text style={styles.brandName}>CoverLens</Text>
-                <Text style={styles.tagline}>Tu colección de videojuegos, clara y visual</Text>
+                <Text style={styles.tagline}>Tu catálogo, todo en uno</Text>
               </View>
             </View>
             <Text style={styles.heroBody}>
@@ -148,14 +149,28 @@ export default function OnboardingScreen() {
               barras o añade títulos a mano.
             </Text>
             <Text style={styles.heroBody}>
-              Los metadatos de ficha (título, plataforma, edición) se resuelven primero con{' '}
-              <Text style={styles.heroEm}>GameplayStores</Text> (sin cuenta), igual que en la tienda. IGDB y ScreenScraper
-              son opcionales: mejoran año, género, descripción y valoración cuando configures credenciales.
+              <Text style={styles.heroEm}>CoverLens incluye su propio servicio de reconocimiento de juegos</Text>
+              {' '}— funciona desde el primer momento, sin cuenta ni configuración previa.
             </Text>
+            <Text style={styles.heroBody}>
+              Las fuentes externas son{' '}
+              <Text style={styles.heroEm}>completamente opcionales</Text>
+              {': '}úsalas con tus propias credenciales para enriquecer la ficha con más datos, portadas alternativas o valoración económica.
+            </Text>
+            <View style={styles.sourceList}>
+              <Text style={styles.sourceListTitle}>Metadatos y portadas (opcionales)</Text>
+              <Text style={styles.sourceListItem}>· IGDB — año, género, descripción (credenciales Twitch)</Text>
+              <Text style={styles.sourceListItem}>· SteamGridDB — portadas de alta calidad (API key)</Text>
+              <Text style={styles.sourceListItem}>· ScreenScraper — metadatos y cajas regionales (usuario/contraseña)</Text>
+            </View>
+            <View style={styles.sourceList}>
+              <Text style={styles.sourceListTitle}>Valoración económica (opcional)</Text>
+              <Text style={styles.sourceListItem}>· PriceCharting — guía de precios USD (token Pro)</Text>
+              <Text style={styles.sourceListItem}>· eBay — mediana de anuncios activos (credenciales de app)</Text>
+            </View>
             <Text style={styles.heroBodyMuted}>
-              En Ajustes → Catálogo puedes ordenar y activar fuentes de metadatos y de portadas por separado. Los pasos
-              siguientes son claves opcionales (IGDB, SteamGridDB, ScreenScraper). La cotización (PriceCharting / eBay) se
-              configura después si la necesitas.
+              Si quieres usar reconocimiento de barcode con GameUPC como fallback adicional, puedes añadir tu clave en Ajustes → APIs.
+              En Ajustes → Catálogo puedes ordenar y activar cada fuente por separado.
             </Text>
           </View>
         ) : null}
@@ -168,8 +183,8 @@ export default function OnboardingScreen() {
             </View>
             <Text style={styles.body}>
               Opcional pero muy útil: con Client ID y Secret de Twitch (gratis) la app puede rellenar año de salida, género,
-              desarrollador, descripción y nota media. El escáner ya obtiene título y plataforma desde GameplayStores sin
-              IGDB; IGDB completa la ficha cuando lo actives en el orden de fuentes.
+              desarrollador, descripción y nota media. CoverLens ya obtiene título y plataforma sin IGDB; IGDB completa
+              la ficha cuando lo actives en el orden de fuentes.
             </Text>
             <Text style={styles.stepsBlock}>
               {`1) Cuenta Twitch: si no tienes, crea una en twitch.tv (gratis).\n`}
@@ -207,7 +222,7 @@ export default function OnboardingScreen() {
               onPress={() =>
                 Alert.alert(
                   'Continuar sin IGDB',
-                  'Podrás configurarlo luego en Ajustes. Seguirás pudiendo catalogar con GameplayStores; la ficha tendrá menos datos de texto hasta que añadas IGDB.',
+                  'Podrás configurarlo luego en Ajustes. CoverLens seguirá funcionando; IGDB añade año, género y descripción cuando esté activo.',
                   [
                     { text: 'Cancelar', style: 'cancel' },
                     { text: 'Siguiente paso', onPress: goNext },
@@ -259,8 +274,8 @@ export default function OnboardingScreen() {
               <Badge label="Opcional" tone="optional" />
             </View>
             <Text style={styles.body}>
-              Opcional: capa extra en metadatos y en portadas si la activas en Ajustes. Útil cuando GameplayStores o
-              SteamGridDB no tienen el juego o quieres otra caja regional.
+              Opcional: capa extra en metadatos y en portadas si la activas en Ajustes. Útil cuando CoverLens o SteamGridDB
+              no tienen el juego o quieres otra caja regional.
             </Text>
             <Text style={styles.stepsBlock}>
               {`1) Entra en screenscraper.fr y regístrate en el foro.\n`}
@@ -363,6 +378,14 @@ const styles = StyleSheet.create({
   heroBody: { fontSize: 15, lineHeight: 23, color: BRAND.ink },
   heroEm: { fontWeight: '800', color: BRAND.blueDark },
   heroBodyMuted: { fontSize: 13, lineHeight: 20, color: BRAND.muted },
+  sourceList: {
+    backgroundColor: '#eef4fc',
+    borderRadius: 10,
+    padding: 12,
+    gap: 4,
+  },
+  sourceListTitle: { fontSize: 12, fontWeight: '800', color: BRAND.blue, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
+  sourceListItem: { fontSize: 13, lineHeight: 20, color: BRAND.ink },
   card: {
     backgroundColor: BRAND.cardBg,
     borderRadius: 16,

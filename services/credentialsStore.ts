@@ -17,6 +17,8 @@ export type ApiCredentials = {
   ebayClientSecret: string;
   /** p.ej. EBAY_ES, EBAY_US */
   ebayMarketplaceId: string;
+  /** GameUPC: fallback barcode → título (opcional) */
+  gameUpcApiKey: string;
 };
 
 export const providerLinks = {
@@ -25,6 +27,7 @@ export const providerLinks = {
   igdb: 'https://dev.twitch.tv/console',
   priceCharting: 'https://www.pricecharting.com/pricecharting-pro?f=api',
   ebayDevelopers: 'https://developer.ebay.com',
+  gameUpc: 'https://www.gameupc.com/',
 };
 
 const EMPTY: ApiCredentials = {
@@ -39,6 +42,7 @@ const EMPTY: ApiCredentials = {
   ebayClientId: '',
   ebayClientSecret: '',
   ebayMarketplaceId: 'EBAY_ES',
+  gameUpcApiKey: '',
 };
 
 export async function getApiCredentials(): Promise<ApiCredentials> {
@@ -58,6 +62,7 @@ export async function getApiCredentials(): Promise<ApiCredentials> {
       ebayClientId: parsed.ebayClientId ?? '',
       ebayClientSecret: parsed.ebayClientSecret ?? '',
       ebayMarketplaceId: parsed.ebayMarketplaceId?.trim() || 'EBAY_ES',
+      gameUpcApiKey: parsed.gameUpcApiKey ?? '',
     };
   } catch {
     return { ...EMPTY };

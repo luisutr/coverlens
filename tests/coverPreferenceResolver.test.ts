@@ -9,10 +9,14 @@ vi.mock('../services/providers/steamGridDbProvider', () => ({
 vi.mock('../services/providers/gameplayStoresCoverProvider', () => ({
   resolveCoverFromGameplayStoresSearch: vi.fn(),
 }));
+vi.mock('../services/providers/chollwebVpsProvider', () => ({
+  resolveCoverFromChollwebVps: vi.fn().mockResolvedValue(null),
+}));
 vi.mock('../services/coverSourcePreferences', () => ({
   loadCoverSourcePreferences: vi.fn(async () => ({
     order: ['gameplaystores', 'steamgriddb', 'igdb', 'screenscraper'],
     enabled: {
+      cholloweb: false,
       gameplaystores: true,
       steamgriddb: true,
       igdb: true,

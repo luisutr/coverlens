@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Política de privacidad de CoverLens — app de catalogación de videojuegos." />
+  <title>Política de privacidad — CoverLens</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      padding: 24px 16px 48px;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      line-height: 1.6;
+      background: #0a0a0a;
+      color: #e8e8e8;
+      max-width: 720px;
+      margin-inline: auto;
+    }
+    h1 { font-size: 1.75rem; margin-bottom: 0.5rem; color: #fff; }
+    h2 { font-size: 1.15rem; margin-top: 2rem; color: #007fff; }
+    h3 { font-size: 1rem; margin-top: 1.25rem; color: #ccc; }
+    p, li { color: #ccc; }
+    a { color: #007fff; }
+    code { background: #1a1a1a; padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.9em; }
+    ul { padding-left: 1.25rem; }
+  </style>
+</head>
+<body>
+<h1>Política de privacidad de CoverLens</h1>
+<p>Última actualización: 2026-05-31</p>
+<h2>1. Responsable</h2>
+<p>Responsable del proyecto: Luis Utrilla del Castillo.</p>
+<p>CoverLens es una app de catalogación de videojuegos.</p>
+<p>Contacto de privacidad y soporte: luisutr+coverlens@gmail.com.</p>
+<h2>2. Qué datos trata la app</h2>
+<p>CoverLens guarda principalmente datos de catálogo introducidos por el usuario:</p>
+<ul>
+<li>títulos de juegos,</li>
+<li>plataforma,</li>
+<li>código de barras (si se usa escáner),</li>
+<li>metadatos asociados (género, año, descripción, etc.),</li>
+<li>URLs de portada/cabecera cuando se resuelven desde proveedores configurados,</li>
+<li>valor estimado del juego (si el usuario activa fuentes de valor).</li>
+</ul>
+<p>También puede almacenar credenciales de APIs de terceros si el usuario las configura voluntariamente en Ajustes.</p>
+<p>La app <strong>no crea cuentas de usuario</strong> ni recopila nombre, email ni identificadores personales propios del servicio.</p>
+<h2>3. Origen de los datos</h2>
+<p>Los datos pueden venir de:</p>
+<ul>
+<li>entrada manual del usuario,</li>
+<li>lectura de código de barras,</li>
+<li>OCR local de portadas (procesamiento en el dispositivo),</li>
+<li>importación de archivos (JSON/CSV),</li>
+<li><strong>CoverLens (integrado)</strong> (<code><a href="https://covers.cholloweb.es/" rel="noopener noreferrer">https://covers.cholloweb.es/</a></code>) — catálogo del desarrollador; fuente por defecto para metadatos, portadas y valor de mercado,</li>
+<li>proveedores externos <strong>opcionales</strong> activados por el usuario: IGDB, ScreenScraper, SteamGridDB, GameUPC, PriceCharting, eBay.</li>
+</ul>
+<p>GameplayStores <strong>no está integrado</strong> en la versión publicada (sin confirmación de uso por parte de la tienda).</p>
+<h2>4. Para qué se usan</h2>
+<p>Los datos se usan para:</p>
+<ul>
+<li>crear y mantener el catálogo personal del usuario,</li>
+<li>completar metadatos de fichas,</li>
+<li>mostrar imágenes de portada/cabecera cuando existan,</li>
+<li>calcular valor estimado del catálogo si el usuario activa fuentes de valor.</li>
+</ul>
+<h2>5. Base legal</h2>
+<ul>
+<li>Ejecución del servicio solicitado por el usuario (funcionalidad de catalogación).</li>
+<li>Consentimiento del usuario para configurar credenciales externas y activar integraciones opcionales.</li>
+</ul>
+<h2>6. Almacenamiento y seguridad</h2>
+<ul>
+<li>La app guarda el catálogo en almacenamiento local del dispositivo (SQLite).</li>
+<li>Las credenciales sensibles se guardan mediante almacenamiento seguro del sistema (<code>expo-secure-store</code>) cuando está disponible.</li>
+<li>Las miniaturas de portadas pueden guardarse en caché local del dispositivo para mejorar el rendimiento.</li>
+<li>No se vende información personal de usuarios.</li>
+</ul>
+<h2>7. Comunicaciones con terceros y servidor del desarrollador</h2>
+<h3>Servidor CoverLens VPS</h3>
+<p>La app consulta un servidor del desarrollador en <code><a href="https://covers.cholloweb.es/" rel="noopener noreferrer">https://covers.cholloweb.es/</a></code> para buscar metadatos, portadas y valores de mercado del catálogo. Las peticiones incluyen términos de búsqueda (título, plataforma) y, en algunos casos, identificadores de juego en el catálogo del VPS. <strong>No se envían credenciales del usuario ni datos de identificación personal</strong> al VPS. No hay registro ni inicio de sesión en el VPS.</p>
+<p>Endpoints principales: <code>/api/browse.php</code>, <code>/games/{platform}/{slug}.json</code>.</p>
+<h3>Proveedores externos opcionales</h3>
+<p>Si el usuario activa fuentes externas o configura credenciales, la app realiza solicitudes de red a esos servicios. Cada proveedor tiene sus propios términos y políticas de privacidad:</p>
+<ul>
+<li>CoverLens VPS: <a href="https://covers.cholloweb.es/" rel="noopener noreferrer">https://covers.cholloweb.es/</a></li>
+<li>GameplayStores: <a href="https://www.gameplaystores.es/" rel="noopener noreferrer">https://www.gameplaystores.es/</a></li>
+<li>IGDB/Twitch: <a href="https://api-docs.igdb.com/" rel="noopener noreferrer">https://api-docs.igdb.com/</a> y <a href="https://www.twitch.tv/p/legal/developer-agreement/" rel="noopener noreferrer">https://www.twitch.tv/p/legal/developer-agreement/</a></li>
+<li>SteamGridDB: <a href="https://www.steamgriddb.com/terms" rel="noopener noreferrer">https://www.steamgriddb.com/terms</a></li>
+<li>ScreenScraper: <a href="https://www.screenscraper.fr/" rel="noopener noreferrer">https://www.screenscraper.fr/</a></li>
+<li>GameUPC: <a href="https://www.gameupc.com/" rel="noopener noreferrer">https://www.gameupc.com/</a></li>
+<li>PriceCharting: <a href="https://www.pricecharting.com/" rel="noopener noreferrer">https://www.pricecharting.com/</a></li>
+<li>eBay Developers: <a href="https://developer.ebay.com/" rel="noopener noreferrer">https://developer.ebay.com/</a></li>
+</ul>
+<p>El usuario puede activar o desactivar cada fuente en Ajustes → Catálogo.</p>
+<h2>8. Menores de edad</h2>
+<p>La app no está orientada específicamente a menores de 13 años.</p>
+<h2>9. Derechos de las personas usuarias</h2>
+<p>El usuario puede:</p>
+<ul>
+<li>borrar su catálogo local desde la app,</li>
+<li>limpiar credenciales guardadas desde Ajustes,</li>
+<li>desactivar fuentes externas en Ajustes,</li>
+<li>solicitar información o eliminación adicional escribiendo al contacto de soporte.</li>
+</ul>
+<h2>10. Cambios en esta política</h2>
+<p>Esta política puede actualizarse para reflejar cambios funcionales, legales o de proveedores. La fecha de «Última actualización» se modificará en cada cambio relevante.</p>
+<p>Cambio reciente (2026-05-31): integración del catálogo CoverLens VPS como fuente principal de metadatos, portadas y valor de mercado.</p>
+<p>Publicada en: <a href="https://covers.cholloweb.es/privacidad" rel="noopener noreferrer">https://covers.cholloweb.es/privacidad</a></p>
+</body>
+</html>

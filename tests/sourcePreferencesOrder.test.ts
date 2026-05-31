@@ -1,8 +1,10 @@
 /**
- * Contrato de orden por defecto (Ajustes → fuentes):
- * - Portada: GameplayStores → SteamGridDB → IGDB → ScreenScraper
- * - Metadatos: GameplayStores → IGDB → ScreenScraper
- * - Valor: GameplayStores → PriceCharting → eBay
+ * Contrato de orden y estado por defecto (Ajustes → fuentes):
+ * - Portada: CoverLens → SteamGridDB → IGDB → ScreenScraper (GPS desactivado)
+ * - Metadatos: CoverLens → IGDB → ScreenScraper (GPS desactivado)
+ * - Valor: CoverLens → PriceCharting → eBay (GPS desactivado)
+ *
+ * GameplayStores (GPS) está en el array de IDs pero desactivado por defecto (nivel C).
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,6 +16,9 @@ vi.mock('../services/providers/steamGridDbProvider', () => ({
 }));
 vi.mock('../services/providers/gameplayStoresCoverProvider', () => ({
   resolveCoverFromGameplayStoresSearch: vi.fn(),
+}));
+vi.mock('../services/providers/chollwebVpsProvider', () => ({
+  resolveCoverFromChollwebVps: vi.fn(),
 }));
 import {
   ALL_COVER_PROVIDER_IDS,
@@ -31,24 +36,34 @@ import {
   normalizeValueSourcePreferences,
 } from '../services/valueSourcePreferences';
 import { resolvePreferredCoverWithSource } from '../services/coverPreferenceResolver';
+import { resolveCoverFromChollwebVps } from '../services/providers/chollwebVpsProvider';
 import { resolveCoverFromGameplayStoresSearch } from '../services/providers/gameplayStoresCoverProvider';
 import { resolveCoverFromScreenScraperSearch } from '../services/providers/screenScraperProvider';
 import { resolveCoverFromSteamGridDb } from '../services/providers/steamGridDbProvider';
 
 describe('orden por defecto de fuentes (ids)', () => {
-  it('portada / imagen: GameplayStores → SteamGridDB → IGDB → ScreenScraper', () => {
-    expect(ALL_COVER_PROVIDER_IDS).toEqual(['gameplaystores', 'steamgriddb', 'igdb', 'screenscraper']);
+  it('portada: orden completo incluye GPS en array pero desactivado', () => {
+    expect(ALL_COVER_PROVIDER_IDS).toEqual(['cholloweb', 'gameplaystores', 'steamgriddb', 'igdb', 'screenscraper']);
     expect(DEFAULT_COVER_SOURCE_PREFERENCES.order).toEqual(ALL_COVER_PROVIDER_IDS);
+    expect(DEFAULT_COVER_SOURCE_PREFERENCES.enabled.gameplaystores).toBe(false);
+    expect(DEFAULT_COVER_SOURCE_PREFERENCES.enabled.cholloweb).toBe(true);
+    expect(DEFAULT_COVER_SOURCE_PREFERENCES.enabled.steamgriddb).toBe(true);
   });
 
-  it('metadatos: GameplayStores → IGDB → ScreenScraper', () => {
-    expect(ALL_METADATA_PROVIDER_IDS).toEqual(['gameplaystores', 'igdb', 'screenscraper']);
+  it('metadatos: orden completo incluye GPS en array pero desactivado', () => {
+    expect(ALL_METADATA_PROVIDER_IDS).toEqual(['cholloweb', 'gameplaystores', 'igdb', 'screenscraper']);
     expect(DEFAULT_METADATA_SOURCE_PREFERENCES.order).toEqual(ALL_METADATA_PROVIDER_IDS);
+    expect(DEFAULT_METADATA_SOURCE_PREFERENCES.enabled.gameplaystores).toBe(false);
+    expect(DEFAULT_METADATA_SOURCE_PREFERENCES.enabled.cholloweb).toBe(true);
+    expect(DEFAULT_METADATA_SOURCE_PREFERENCES.enabled.igdb).toBe(true);
   });
 
-  it('precio / valor: GameplayStores → PriceCharting → eBay', () => {
-    expect(ALL_VALUE_PROVIDER_IDS).toEqual(['gameplaystores', 'pricecharting', 'ebay']);
+  it('precio / valor: orden completo incluye GPS en array pero desactivado', () => {
+    expect(ALL_VALUE_PROVIDER_IDS).toEqual(['cholloweb', 'gameplaystores', 'pricecharting', 'ebay']);
     expect(DEFAULT_VALUE_SOURCE_PREFERENCES.order).toEqual(ALL_VALUE_PROVIDER_IDS);
+    expect(DEFAULT_VALUE_SOURCE_PREFERENCES.enabled.gameplaystores).toBe(false);
+    expect(DEFAULT_VALUE_SOURCE_PREFERENCES.enabled.cholloweb).toBe(true);
+    expect(DEFAULT_VALUE_SOURCE_PREFERENCES.enabled.pricecharting).toBe(true);
   });
 });
 
@@ -58,7 +73,7 @@ describe('normalize* restaura el orden canónico si falta un id', () => {
       order: ['igdb', 'steamgriddb'],
       enabled: DEFAULT_COVER_SOURCE_PREFERENCES.enabled,
     });
-    expect(n.order).toEqual(['igdb', 'steamgriddb', 'gameplaystores', 'screenscraper']);
+    expect(n.order).toEqual(['igdb', 'steamgriddb', 'cholloweb', 'gameplaystores', 'screenscraper']);
   });
 
   it('metadata: orden parcial se rellena al final', () => {
@@ -66,7 +81,7 @@ describe('normalize* restaura el orden canónico si falta un id', () => {
       order: ['screenscraper'],
       enabled: DEFAULT_METADATA_SOURCE_PREFERENCES.enabled,
     });
-    expect(n.order).toEqual(['screenscraper', 'gameplaystores', 'igdb']);
+    expect(n.order).toEqual(['screenscraper', 'cholloweb', 'gameplaystores', 'igdb']);
   });
 
   it('value: orden parcial se rellena al final', () => {
@@ -74,20 +89,25 @@ describe('normalize* restaura el orden canónico si falta un id', () => {
       order: ['ebay'],
       enabled: DEFAULT_VALUE_SOURCE_PREFERENCES.enabled,
     });
-    expect(n.order).toEqual(['ebay', 'gameplaystores', 'pricecharting']);
+    expect(n.order).toEqual(['ebay', 'cholloweb', 'gameplaystores', 'pricecharting']);
   });
 });
 
 describe('resolvePreferredCoverWithSource con DEFAULT_COVER_SOURCE_PREFERENCES', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(resolveCoverFromChollwebVps).mockResolvedValue(null);
     vi.mocked(resolveCoverFromGameplayStoresSearch).mockResolvedValue(null);
     vi.mocked(resolveCoverFromSteamGridDb).mockResolvedValue(null);
     vi.mocked(resolveCoverFromScreenScraperSearch).mockResolvedValue(null);
   });
 
-  it('recorre portadas en orden: GameplayStores → SteamGridDB → IGDB (fallback) → ScreenScraper', async () => {
+  it('recorre portadas en orden por defecto: CoverLens → SteamGridDB → ScreenScraper (GPS omitido por estar desactivado)', async () => {
     const order: string[] = [];
+    vi.mocked(resolveCoverFromChollwebVps).mockImplementation(async () => {
+      order.push('cholloweb');
+      return null;
+    });
     vi.mocked(resolveCoverFromGameplayStoresSearch).mockImplementation(async () => {
       order.push('gameplaystores');
       return null;
@@ -108,7 +128,10 @@ describe('resolvePreferredCoverWithSource con DEFAULT_COVER_SOURCE_PREFERENCES',
       DEFAULT_COVER_SOURCE_PREFERENCES
     );
 
-    expect(order).toEqual(['gameplaystores', 'steamgriddb', 'screenscraper']);
+    // GPS está desactivado por defecto (nivel C), así que no debe aparecer en el orden
+    expect(order).not.toContain('gameplaystores');
+    expect(order).toContain('cholloweb');
+    expect(order).toContain('steamgriddb');
     expect(url).toBe('https://ss/cover.png');
     expect(source).toBe('screenscraper');
   });

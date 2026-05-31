@@ -12,6 +12,7 @@
     "lint": "expo lint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "build:privacy": "node ./scripts/build-privacy-html.mjs",
     "probe:covers": "node ./scripts/probe-cover-apis.mjs",
     "probe:covers:steam": "env PROBE_SKIP_SCREENSCRAPER=1 node ./scripts/probe-cover-apis.mjs",
     "ensure-assets": "node ./scripts/ensure-placeholder-assets.mjs",

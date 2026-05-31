@@ -1,14 +1,16 @@
 /**
  * Preferencias de orden y activación de fuentes para la cadena de portadas del catálogo.
- * Se guardan en SecureStore (JSON pequeño, no son secretos críticos).
+ * CoverLens es la fuente integrada por defecto. SteamGridDB, ScreenScraper e IGDB son opcionales.
+ * GameplayStores desactivado (nivel C — sin confirmación de uso).
  */
 import * as SecureStore from 'expo-secure-store';
 
 const STORAGE_KEY = 'coverlens_cover_source_prefs_v1';
 
-export type CoverProviderId = 'gameplaystores' | 'steamgriddb' | 'igdb' | 'screenscraper';
+export type CoverProviderId = 'cholloweb' | 'gameplaystores' | 'steamgriddb' | 'igdb' | 'screenscraper';
 
 export const ALL_COVER_PROVIDER_IDS: CoverProviderId[] = [
+  'cholloweb',
   'gameplaystores',
   'steamgriddb',
   'igdb',
@@ -16,10 +18,11 @@ export const ALL_COVER_PROVIDER_IDS: CoverProviderId[] = [
 ];
 
 export const COVER_PROVIDER_LABELS: Record<CoverProviderId, string> = {
-  gameplaystores: 'GameplayStores',
-  steamgriddb: 'SteamGridDB',
-  igdb: 'IGDB (URL de metadatos si existe)',
-  screenscraper: 'ScreenScraper',
+  cholloweb: 'CoverLens (integrado)',
+  gameplaystores: 'GameplayStores (desactivado)',
+  steamgriddb: 'SteamGridDB (opcional — API key)',
+  igdb: 'IGDB (opcional — credenciales Twitch)',
+  screenscraper: 'ScreenScraper (opcional — usuario/contraseña)',
 };
 
 export type CoverSourcePreferences = {
@@ -30,7 +33,8 @@ export type CoverSourcePreferences = {
 export const DEFAULT_COVER_SOURCE_PREFERENCES: CoverSourcePreferences = {
   order: [...ALL_COVER_PROVIDER_IDS],
   enabled: {
-    gameplaystores: true,
+    cholloweb: true,
+    gameplaystores: false, // nivel C — sin confirmación de uso
     steamgriddb: true,
     igdb: true,
     screenscraper: true,

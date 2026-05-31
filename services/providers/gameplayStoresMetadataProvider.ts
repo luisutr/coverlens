@@ -1,3 +1,10 @@
+/*
+ * INTEGRACIÓN DESACTIVADA — GameplayStores (nivel C)
+ * Sin confirmación de uso por parte de la tienda (2 contactos sin respuesta).
+ * Código mantenido para posible reactivación si se obtiene autorización.
+ * Ver docs/FUENTES_TERCEROS_DECISION.md §6.
+ */
+
 /**
  * Metadatos desde GameplayStores (búsqueda JSON + ficha HTML de producto).
  * El JSON solo trae nombre, portada y precio de listado; descripción, género y año suelen estar en la ficha.
