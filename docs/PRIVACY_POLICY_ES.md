@@ -33,7 +33,7 @@ Los datos pueden venir de:
 - lectura de código de barras,
 - OCR local de portadas (procesamiento en el dispositivo),
 - importación de archivos (JSON/CSV),
-- **CoverLens (integrado)** (`https://covers.cholloweb.es/`) — catálogo del desarrollador; fuente por defecto para metadatos, portadas y valor de mercado,
+- **CoverLens (integrado)** (`https://covers.cholloweb.es/`) — catálogo del desarrollador; fuente por defecto para metadatos, portadas, valor de mercado y búsqueda directa por código de barras (EAN/UPC),
 - proveedores externos **opcionales** activados por el usuario: IGDB, ScreenScraper, SteamGridDB, GameUPC, PriceCharting, eBay.
 
 GameplayStores **no está integrado** en la versión publicada (sin confirmación de uso por parte de la tienda).
@@ -63,16 +63,15 @@ Los datos se usan para:
 
 ### Servidor CoverLens VPS
 
-La app consulta un servidor del desarrollador en `https://covers.cholloweb.es/` para buscar metadatos, portadas y valores de mercado del catálogo. Las peticiones incluyen términos de búsqueda (título, plataforma) y, en algunos casos, identificadores de juego en el catálogo del VPS. **No se envían credenciales del usuario ni datos de identificación personal** al VPS. No hay registro ni inicio de sesión en el VPS.
+La app consulta un servidor del desarrollador en `https://covers.cholloweb.es/` para buscar metadatos, portadas y valores de mercado del catálogo. Las peticiones incluyen términos de búsqueda (título, plataforma), códigos de barras escaneados (EAN/UPC) y, en algunos casos, identificadores de juego en el catálogo del VPS. **No se envían credenciales del usuario ni datos de identificación personal** al VPS. No hay registro ni inicio de sesión en el VPS.
 
-Endpoints principales: `/api/browse.php`, `/games/{platform}/{slug}.json`.
+Endpoints principales: `/api/browse.php` (búsqueda por título), `/api/search.php` (búsqueda por código de barras), `/games/{platform}/{slug}.json` (ficha completa).
 
 ### Proveedores externos opcionales
 
 Si el usuario activa fuentes externas o configura credenciales, la app realiza solicitudes de red a esos servicios. Cada proveedor tiene sus propios términos y políticas de privacidad:
 
 - CoverLens VPS: https://covers.cholloweb.es/
-- GameplayStores: https://www.gameplaystores.es/
 - IGDB/Twitch: https://api-docs.igdb.com/ y https://www.twitch.tv/p/legal/developer-agreement/
 - SteamGridDB: https://www.steamgriddb.com/terms
 - ScreenScraper: https://www.screenscraper.fr/
@@ -99,6 +98,6 @@ El usuario puede:
 
 Esta política puede actualizarse para reflejar cambios funcionales, legales o de proveedores. La fecha de «Última actualización» se modificará en cada cambio relevante.
 
-Cambio reciente (2026-05-31): integración del catálogo CoverLens VPS como fuente principal de metadatos, portadas y valor de mercado.
+Cambios recientes (2026-05-31): integración del catálogo CoverLens VPS como fuente principal de metadatos, portadas y valor de mercado; nuevo endpoint `/api/search.php?barcode=…` para búsqueda directa O(1) por código de barras EAN/UPC durante el escaneo; GameplayStores confirmado como no integrado.
 
 Publicada en: https://covers.cholloweb.es/privacidad

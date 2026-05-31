@@ -16,6 +16,7 @@ import {
   resolveCoverFromChollwebVps,
   resolveValueFromChollwebVps,
   searchChollwebVps,
+  searchChollwebVpsByBarcode,
   getChollwebVpsDetail,
   type VpsBrowseResponse,
   type VpsGameDetail,
@@ -208,19 +209,159 @@ describe('getChollwebVpsDetail', () => {
   });
 });
 
+// ── searchChollwebVpsByBarcode ────────────────────────────────────────────────
+
+describe('searchChollwebVpsByBarcode', () => {
+  beforeEach(() => vi.restoreAllMocks());
+
+  it('devuelve null si fetch falla', async () => {
+    vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('network'));
+    const result = await searchChollwebVpsByBarcode('5021290040045');
+    expect(result).toBeNull();
+  });
+
+  it('devuelve null si respuesta no es ok', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response('Not found', { status: 404 })
+    );
+    const result = await searchChollwebVpsByBarcode('5021290040045');
+    expect(result).toBeNull();
+  });
+
+  it('devuelve null si count es 0', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ barcode: '5021290040045', count: 0, results: [] }), { status: 200 })
+    );
+    const result = await searchChollwebVpsByBarcode('5021290040045');
+    expect(result).toBeNull();
+  });
+
+  it('llama a /api/search.php con el barcode correcto', async () => {
+    const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ barcode: '045496742843', count: 0, results: [] }), { status: 200 })
+    );
+    await searchChollwebVpsByBarcode('045496742843');
+    const calledUrl = mockFetch.mock.calls[0]![0] as string;
+    expect(calledUrl).toContain('/api/search.php');
+    expect(calledUrl).toContain('barcode=045496742843');
+  });
+
+  it('devuelve el primer resultado cuando hay hit', async () => {
+    const hit = {
+      score: 1,
+      slug: 'super-mario-odyssey',
+      title: 'Super Mario Odyssey',
+      platform: 'Switch',
+      platformSlug: 'switch',
+      coverPath: 'covers/switch/super-mario-odyssey.jpg',
+      jsonUrl: 'https://covers.cholloweb.es/games/switch/super-mario-odyssey.json',
+    };
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ barcode: '045496742843', count: 1, results: [hit] }), { status: 200 })
+    );
+    const result = await searchChollwebVpsByBarcode('045496742843');
+    expect(result).not.toBeNull();
+    expect(result!.slug).toBe('super-mario-odyssey');
+    expect(result!.platformSlug).toBe('switch');
+  });
+});
+
 // ── resolveFromChollwebVps ────────────────────────────────────────────────────
 
 describe('resolveFromChollwebVps', () => {
   beforeEach(() => vi.restoreAllMocks());
 
-  it('devuelve null si no hay titleHint', async () => {
+  it('devuelve null si no hay titleHint ni barcode', async () => {
     const result = await resolveFromChollwebVps({});
     expect(result).toBeNull();
   });
 
-  it('devuelve null si titleHint es solo espacios', async () => {
+  it('devuelve null si titleHint es solo espacios y no hay barcode', async () => {
     const result = await resolveFromChollwebVps({ titleHint: '   ' });
     expect(result).toBeNull();
+  });
+
+  // ── Ruta barcode-only ─────────────────────────────────────────────────────
+
+  it('ruta barcode: devuelve null si search.php no encuentra el EAN', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ barcode: '0000000000000', count: 0, results: [] }), { status: 200 })
+    );
+    const result = await resolveFromChollwebVps({ barcode: '0000000000000' });
+    expect(result).toBeNull();
+  });
+
+  it('ruta barcode: resuelve MetadataResult cuando el EAN está en el VPS', async () => {
+    const hit = {
+      score: 1,
+      slug: 'super-mario-odyssey',
+      title: 'Super Mario Odyssey',
+      platform: 'Switch',
+      platformSlug: 'switch',
+      coverPath: 'covers/switch/super-mario-odyssey.jpg',
+      jsonUrl: 'https://covers.cholloweb.es/games/switch/super-mario-odyssey.json',
+    };
+    const detail = makeGameDetail();
+
+    vi.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ barcode: '045496742843', count: 1, results: [hit] }), { status: 200 })
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify(detail), { status: 200 }));
+
+    const result = await resolveFromChollwebVps({ barcode: '045496742843' });
+    expect(result).not.toBeNull();
+    expect(result!.title).toBe('Super Mario Odyssey');
+    expect(result!.platform).toBe('Switch');
+    expect(result!.genre).toBe('Platform / Action-Adventure');
+    expect(result!.source).toBe('cholloweb');
+    expect(result!.status).toBe('resolved');
+  });
+
+  it('ruta barcode: usa coverPath del hit si detail no tiene coverPath', async () => {
+    const hit = {
+      score: 1,
+      slug: 'super-mario-odyssey',
+      title: 'Super Mario Odyssey',
+      platform: 'Switch',
+      platformSlug: 'switch',
+      coverPath: 'covers/switch/super-mario-odyssey.jpg',
+      jsonUrl: '',
+    };
+    const detail = makeGameDetail({ coverPath: null, coverUrl: null });
+
+    vi.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ barcode: '045496742843', count: 1, results: [hit] }), { status: 200 })
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify(detail), { status: 200 }));
+
+    const result = await resolveFromChollwebVps({ barcode: '045496742843' });
+    expect(result!.coverUrl).toBe('https://covers.cholloweb.es/covers/switch/super-mario-odyssey.jpg');
+  });
+
+  it('ruta barcode: funciona aunque getChollwebVpsDetail falle (datos del hit)', async () => {
+    const hit = {
+      score: 1,
+      slug: 'super-mario-odyssey',
+      title: 'Super Mario Odyssey',
+      platform: 'Switch',
+      platformSlug: 'switch',
+      coverPath: null,
+      jsonUrl: '',
+    };
+
+    vi.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ barcode: '045496742843', count: 1, results: [hit] }), { status: 200 })
+      )
+      .mockResolvedValueOnce(new Response('', { status: 500 }));
+
+    const result = await resolveFromChollwebVps({ barcode: '045496742843' });
+    expect(result).not.toBeNull();
+    expect(result!.title).toBe('Super Mario Odyssey');
+    expect(result!.genre).toBeNull();
+    expect(result!.status).toBe('partial');
   });
 
   it('devuelve null si browse no encuentra resultados', async () => {

@@ -52,7 +52,7 @@
 <li>lectura de código de barras,</li>
 <li>OCR local de portadas (procesamiento en el dispositivo),</li>
 <li>importación de archivos (JSON/CSV),</li>
-<li><strong>CoverLens (integrado)</strong> (<code><a href="https://covers.cholloweb.es/" rel="noopener noreferrer">https://covers.cholloweb.es/</a></code>) — catálogo del desarrollador; fuente por defecto para metadatos, portadas y valor de mercado,</li>
+<li><strong>CoverLens (integrado)</strong> (<code><a href="https://covers.cholloweb.es/" rel="noopener noreferrer">https://covers.cholloweb.es/</a></code>) — catálogo del desarrollador; fuente por defecto para metadatos, portadas, valor de mercado y búsqueda directa por código de barras (EAN/UPC),</li>
 <li>proveedores externos <strong>opcionales</strong> activados por el usuario: IGDB, ScreenScraper, SteamGridDB, GameUPC, PriceCharting, eBay.</li>
 </ul>
 <p>GameplayStores <strong>no está integrado</strong> en la versión publicada (sin confirmación de uso por parte de la tienda).</p>
@@ -78,13 +78,12 @@
 </ul>
 <h2>7. Comunicaciones con terceros y servidor del desarrollador</h2>
 <h3>Servidor CoverLens VPS</h3>
-<p>La app consulta un servidor del desarrollador en <code><a href="https://covers.cholloweb.es/" rel="noopener noreferrer">https://covers.cholloweb.es/</a></code> para buscar metadatos, portadas y valores de mercado del catálogo. Las peticiones incluyen términos de búsqueda (título, plataforma) y, en algunos casos, identificadores de juego en el catálogo del VPS. <strong>No se envían credenciales del usuario ni datos de identificación personal</strong> al VPS. No hay registro ni inicio de sesión en el VPS.</p>
-<p>Endpoints principales: <code>/api/browse.php</code>, <code>/games/{platform}/{slug}.json</code>.</p>
+<p>La app consulta un servidor del desarrollador en <code><a href="https://covers.cholloweb.es/" rel="noopener noreferrer">https://covers.cholloweb.es/</a></code> para buscar metadatos, portadas y valores de mercado del catálogo. Las peticiones incluyen términos de búsqueda (título, plataforma), códigos de barras escaneados (EAN/UPC) y, en algunos casos, identificadores de juego en el catálogo del VPS. <strong>No se envían credenciales del usuario ni datos de identificación personal</strong> al VPS. No hay registro ni inicio de sesión en el VPS.</p>
+<p>Endpoints principales: <code>/api/browse.php</code> (búsqueda por título), <code>/api/search.php</code> (búsqueda por código de barras), <code>/games/{platform}/{slug}.json</code> (ficha completa).</p>
 <h3>Proveedores externos opcionales</h3>
 <p>Si el usuario activa fuentes externas o configura credenciales, la app realiza solicitudes de red a esos servicios. Cada proveedor tiene sus propios términos y políticas de privacidad:</p>
 <ul>
 <li>CoverLens VPS: <a href="https://covers.cholloweb.es/" rel="noopener noreferrer">https://covers.cholloweb.es/</a></li>
-<li>GameplayStores: <a href="https://www.gameplaystores.es/" rel="noopener noreferrer">https://www.gameplaystores.es/</a></li>
 <li>IGDB/Twitch: <a href="https://api-docs.igdb.com/" rel="noopener noreferrer">https://api-docs.igdb.com/</a> y <a href="https://www.twitch.tv/p/legal/developer-agreement/" rel="noopener noreferrer">https://www.twitch.tv/p/legal/developer-agreement/</a></li>
 <li>SteamGridDB: <a href="https://www.steamgriddb.com/terms" rel="noopener noreferrer">https://www.steamgriddb.com/terms</a></li>
 <li>ScreenScraper: <a href="https://www.screenscraper.fr/" rel="noopener noreferrer">https://www.screenscraper.fr/</a></li>
@@ -105,7 +104,7 @@
 </ul>
 <h2>10. Cambios en esta política</h2>
 <p>Esta política puede actualizarse para reflejar cambios funcionales, legales o de proveedores. La fecha de «Última actualización» se modificará en cada cambio relevante.</p>
-<p>Cambio reciente (2026-05-31): integración del catálogo CoverLens VPS como fuente principal de metadatos, portadas y valor de mercado.</p>
+<p>Cambios recientes (2026-05-31): integración del catálogo CoverLens VPS como fuente principal de metadatos, portadas y valor de mercado; nuevo endpoint <code>/api/search.php?barcode=…</code> para búsqueda directa O(1) por código de barras EAN/UPC durante el escaneo; GameplayStores confirmado como no integrado.</p>
 <p>Publicada en: <a href="https://covers.cholloweb.es/privacidad" rel="noopener noreferrer">https://covers.cholloweb.es/privacidad</a></p>
 </body>
 </html>

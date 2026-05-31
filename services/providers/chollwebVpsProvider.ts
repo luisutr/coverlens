@@ -4,6 +4,7 @@
  * API estática + browse:
  *   GET /games/platforms.json              → listado de plataformas
  *   GET /api/browse.php?q=...&platform=... → búsqueda paginada
+ *   GET /api/search.php?barcode=...        → búsqueda por EAN/UPC (O(1))
  *   GET /games/{platformSlug}/{slug}.json  → ficha completa
  *
  * Portadas propias en: https://covers.cholloweb.es/covers/{platform}/{slug}.jpg|webp
@@ -99,6 +100,24 @@ export type VpsGameDetail = {
   igdbId: number | null;
 };
 
+// ── Tipos de respuesta de search.php ─────────────────────────────────────────
+
+type VpsSearchResult = {
+  score: number;
+  slug: string;
+  title: string;
+  platform: string;
+  platformSlug: string;
+  coverPath: string | null;
+  jsonUrl: string;
+};
+
+type VpsSearchResponse = {
+  barcode?: string;
+  count: number;
+  results: VpsSearchResult[];
+};
+
 // ── Funciones de fetch ────────────────────────────────────────────────────────
 
 export async function searchChollwebVps(
@@ -129,6 +148,22 @@ export async function getChollwebVpsDetail(
     });
     if (!res.ok) return null;
     return (await res.json()) as VpsGameDetail;
+  } catch {
+    return null;
+  }
+}
+
+export async function searchChollwebVpsByBarcode(
+  barcode: string
+): Promise<VpsSearchResult | null> {
+  try {
+    const params = new URLSearchParams({ barcode });
+    const res = await fetch(`${BASE_URL}/api/search.php?${params}`, {
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as VpsSearchResponse;
+    return data.results?.[0] ?? null;
   } catch {
     return null;
   }
@@ -184,33 +219,55 @@ export async function resolveFromChollwebVps(
   input: ResolveInput
 ): Promise<MetadataResult | null> {
   const titleHint = input.titleHint?.trim();
-  if (!titleHint) return null;
+  const barcode = input.barcode?.trim();
 
-  const platformHint = input.platformHint?.trim() ?? null;
-  const platformSlug = platformHint ? canonicalToVpsSlug(platformHint) : null;
+  let resolvedSlug: string;
+  let resolvedPlatformSlug: string;
+  let resolvedTitle: string;
+  let resolvedCoverUrl: string | null;
+  let resolvedRating: number | null;
 
-  const data = await searchChollwebVps(titleHint, platformSlug, 5);
-  if (!data?.results?.length) return null;
+  if (!titleHint) {
+    // Ruta barcode-only: search.php?barcode=… (O(1) via barcodes_index.json)
+    if (!barcode) return null;
+    const hit = await searchChollwebVpsByBarcode(barcode);
+    if (!hit) return null;
+    resolvedSlug = hit.slug;
+    resolvedPlatformSlug = hit.platformSlug;
+    resolvedTitle = hit.title;
+    resolvedCoverUrl = hit.coverPath ? `${BASE_URL}/${hit.coverPath}` : null;
+    resolvedRating = null;
+  } else {
+    // Ruta título: browse.php?q=…
+    const platformHint = input.platformHint?.trim() ?? null;
+    const platformSlug = platformHint ? canonicalToVpsSlug(platformHint) : null;
+    const data = await searchChollwebVps(titleHint, platformSlug, 5);
+    if (!data?.results?.length) return null;
+    const best = pickBestResult(data.results, titleHint);
+    if (!best) return null;
+    resolvedSlug = best.slug;
+    resolvedPlatformSlug = best.platformSlug;
+    resolvedTitle = best.title;
+    resolvedCoverUrl = best.coverUrl ?? null;
+    resolvedRating = best.rating;
+  }
 
-  const best = pickBestResult(data.results, titleHint);
-  if (!best) return null;
-
-  // Intentar ficha completa para género, developer, publisher, descripción
-  const detail = await getChollwebVpsDetail(best.platformSlug, best.slug);
+  // Ficha completa para género, developer, publisher, descripción
+  const detail = await getChollwebVpsDetail(resolvedPlatformSlug, resolvedSlug);
 
   const coverUrl =
-    best.coverUrl ??
+    resolvedCoverUrl ??
     (detail?.coverPath ? `${BASE_URL}/${detail.coverPath}` : null);
 
-  const platform = canonicalizePlatform(detail?.platform ?? best.platform);
+  const platform = canonicalizePlatform(detail?.platform ?? resolvedPlatformSlug);
 
   const isResolved = Boolean(
-    (detail?.genre || best.rating != null) &&
+    (detail?.genre || resolvedRating != null) &&
       (detail?.developer || detail?.publisher)
   );
 
   return {
-    title: detail?.title ?? best.title,
+    title: detail?.title ?? resolvedTitle,
     platform,
     version: detail?.version ?? null,
     releaseYear: detail?.releaseYear ?? null,
@@ -218,7 +275,7 @@ export async function resolveFromChollwebVps(
     developer: detail?.developer ?? null,
     publisher: detail?.publisher ?? null,
     description: detail?.description ?? null,
-    rating: detail?.rating ?? best.rating ?? null,
+    rating: detail?.rating ?? resolvedRating ?? null,
     franchise: null,
     coverUrl,
     headerImageUrl: coverUrl,
