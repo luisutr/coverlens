@@ -1,4 +1,5 @@
 import { loadCoverSourcePreferences } from './coverSourcePreferences';
+import { logBarcodeScan } from './debug/barcodeScanLog';
 import { loadMetadataSourcePreferences } from './metadataSourcePreferences';
 import { mergeMetadataLayers, isUsableMetadataLayer } from './metadataLayerMerge';
 import { resolvePreferredCoverWithSource } from './coverPreferenceResolver';
@@ -43,6 +44,13 @@ function emptyRichMetadata(): Pick<
 
 export async function resolveMetadata(input: ResolveInput): Promise<MetadataResult> {
   const fetchCovers = input.fetchCovers !== false;
+  if (input.barcode?.trim()) {
+    logBarcodeScan('resolve.start', {
+      barcode: input.barcode.trim(),
+      titleHint: input.titleHint?.trim() || null,
+      platformHint: input.platformHint?.trim() || null,
+    });
+  }
   const [coverPrefs, metaPrefs] = await Promise.all([
     fetchCovers ? loadCoverSourcePreferences() : Promise.resolve(undefined as CoverSourcePreferences | undefined),
     loadMetadataSourcePreferences(),
@@ -67,7 +75,26 @@ export async function resolveMetadata(input: ResolveInput): Promise<MetadataResu
       if (layer?.coverUrl?.trim()) lastScreenScraperCover = layer.coverUrl.trim();
     }
 
-    if (!isUsableMetadataLayer(layer) || !layer) continue;
+    if (!isUsableMetadataLayer(layer) || !layer) {
+      if (input.barcode?.trim()) {
+        logBarcodeScan('resolve.provider.skip', {
+          provider: id,
+          reason: layer ? 'error_or_empty' : 'null',
+          status: layer?.status,
+          error: layer?.error,
+        });
+      }
+      continue;
+    }
+
+    if (input.barcode?.trim()) {
+      logBarcodeScan('resolve.provider.hit', {
+        provider: id,
+        status: layer.status,
+        title: layer.title,
+        platform: layer.platform,
+      });
+    }
 
     merged = mergeMetadataLayers(merged, layer);
     working = {
@@ -112,14 +139,21 @@ export async function resolveMetadata(input: ResolveInput): Promise<MetadataResu
       });
     }
 
-    return {
+    const errorResult = {
       title: fallbackTitle,
       platform: userPlatform?.trim() || 'Plataforma desconocida',
       ...emptyRichMetadata(),
-      status: 'error',
+      status: 'error' as const,
       source: 'local',
       error: 'no_metadata_sources',
     };
+    if (input.barcode?.trim()) {
+      logBarcodeScan('resolve.failed', {
+        barcode: input.barcode.trim(),
+        error: errorResult.error,
+      });
+    }
+    return errorResult;
   }
 
   let withImages: MetadataResult = { ...merged };
@@ -150,5 +184,15 @@ export async function resolveMetadata(input: ResolveInput): Promise<MetadataResu
     };
   }
 
-  return finalizeMetadataResult(withImages);
+  const finalized = finalizeMetadataResult(withImages);
+  if (input.barcode?.trim()) {
+    logBarcodeScan('resolve.done', {
+      barcode: input.barcode.trim(),
+      status: finalized.status,
+      source: finalized.source,
+      title: finalized.title,
+      platform: finalized.platform,
+    });
+  }
+  return finalized;
 }

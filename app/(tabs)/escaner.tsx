@@ -21,6 +21,7 @@ import {
 import { theme } from '../../constants/theme';
 import { addGame, getGameByBarcode, initDatabase } from '../../database/dbConfig';
 import { resolveMetadata } from '../../services/metadataResolver';
+import { clearBarcodeScanLog, formatBarcodeScanLogForDisplay, logBarcodeScan } from '../../services/debug/barcodeScanLog';
 import { enqueueCoverThumbCache } from '../../services/storage/coverThumbCache';
 import { assessBarcode } from '../../services/utils/barcodeValidation';
 import {
@@ -70,6 +71,7 @@ export default function EscanerScreen() {
 
   const [barcodeFixModal, setBarcodeFixModal] = React.useState(false);
   const [barcodeFixValue, setBarcodeFixValue] = React.useState('');
+  const [scanDebugLog, setScanDebugLog] = React.useState('');
 
   const isLikelyDuplicateError = (error: unknown) => {
     const msg = String(error).toLowerCase();
@@ -106,16 +108,28 @@ export default function EscanerScreen() {
       scanLockRef.current = true;
       setSaving(true);
       setLastBarcode(barcode);
+      clearBarcodeScanLog();
+      logBarcodeScan('scan.flow.start', { barcode });
       try {
         await initDatabase();
         const existing = await getGameByBarcode(barcode);
         if (existing) {
+          logBarcodeScan('scan.flow.duplicate', { barcode, gameId: existing.id ?? null });
           router.replace('/');
           return;
         }
         const resolved = await resolveMetadata({ barcode });
+        logBarcodeScan('scan.flow.resolved', {
+          barcode,
+          status: resolved.status,
+          source: resolved.source,
+          title: resolved.title,
+          platform: resolved.platform,
+          error: resolved.error ?? null,
+        });
 
         if (resolved.status === 'error') {
+          setScanDebugLog(formatBarcodeScanLogForDisplay());
           setNotFoundBarcode(barcode);
           setNotFoundTitle('');
           setNotFoundPlatform('');
@@ -198,6 +212,12 @@ export default function EscanerScreen() {
       if (!barcode || saving || mode !== 'barcode' || lastBarcode === barcode || scanLockRef.current) return;
 
       const assessment = assessBarcode(barcode);
+      logBarcodeScan('scan.camera.read', {
+        raw: data,
+        normalized: barcode,
+        assessmentOk: assessment.ok,
+        assessmentReason: assessment.ok ? null : assessment.reason,
+      });
       if (!assessment.ok) {
         scanLockRef.current = true;
         setScannerEnabled(false);
@@ -583,6 +603,15 @@ export default function EscanerScreen() {
                   onSubmitEditing={onConfirmNotFound}
                 />
 
+                {__DEV__ && scanDebugLog ? (
+                  <>
+                    <Text style={styles.modalLabel}>Log de depuración (Metro)</Text>
+                    <Text style={styles.debugLog} selectable>
+                      {scanDebugLog}
+                    </Text>
+                  </>
+                ) : null}
+
                 <View style={styles.modalActions}>
                   <TouchableOpacity
                     style={styles.modalCancelBtn}
@@ -756,6 +785,16 @@ const styles = StyleSheet.create({
   modalLabel: { color: theme.colors.textDim, fontSize: 12, fontWeight: '600', marginBottom: 5, marginTop: 10 },
   modalInput: { backgroundColor: '#1a1a1a', color: '#fff', borderWidth: 1, borderColor: '#333', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
   modalRaw: { color: '#555', fontSize: 11, fontFamily: 'monospace', marginTop: 4, lineHeight: 16 },
+  debugLog: {
+    color: '#8ab4ff',
+    fontSize: 10,
+    fontFamily: 'monospace',
+    backgroundColor: '#111',
+    borderRadius: 8,
+    padding: 10,
+    lineHeight: 14,
+    marginTop: 4,
+  },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 20 },
   modalCancelBtn: { flex: 1, paddingVertical: 13, borderRadius: 10, borderWidth: 1, borderColor: '#444', alignItems: 'center' },
   modalCancelText: { color: theme.colors.textDim, fontWeight: '600' },

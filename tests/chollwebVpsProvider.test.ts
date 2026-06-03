@@ -10,6 +10,15 @@
  *   - resolveValueFromChollwebVps: precio en EUR
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('../services/utils/barcodeToTitle', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../services/utils/barcodeToTitle')>();
+  return {
+    ...actual,
+    barcodeToTitle: vi.fn().mockResolvedValue(null),
+  };
+});
+
 import {
   canonicalToVpsSlug,
   resolveFromChollwebVps,
@@ -21,6 +30,7 @@ import {
   type VpsBrowseResponse,
   type VpsGameDetail,
 } from '../services/providers/chollwebVpsProvider';
+import { barcodeToTitle } from '../services/utils/barcodeToTitle';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -212,7 +222,10 @@ describe('getChollwebVpsDetail', () => {
 // ── searchChollwebVpsByBarcode ────────────────────────────────────────────────
 
 describe('searchChollwebVpsByBarcode', () => {
-  beforeEach(() => vi.restoreAllMocks());
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.mocked(barcodeToTitle).mockResolvedValue(null);
+  });
 
   it('devuelve null si fetch falla', async () => {
     vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('network'));
@@ -228,8 +241,8 @@ describe('searchChollwebVpsByBarcode', () => {
     expect(result).toBeNull();
   });
 
-  it('devuelve null si count es 0', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+  it('devuelve null si count es 0 en todas las variantes', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ barcode: '5021290040045', count: 0, results: [] }), { status: 200 })
     );
     const result = await searchChollwebVpsByBarcode('5021290040045');
@@ -264,12 +277,36 @@ describe('searchChollwebVpsByBarcode', () => {
     expect(result!.slug).toBe('super-mario-odyssey');
     expect(result!.platformSlug).toBe('switch');
   });
+
+  it('prueba UPC-A (12 dígitos) y acierta con EAN-13 en el índice', async () => {
+    const hit = {
+      score: 1,
+      slug: 'super-mario-odyssey',
+      title: 'Super Mario Odyssey',
+      platform: 'Switch',
+      platformSlug: 'switch',
+      coverPath: 'covers/switch/super-mario-odyssey.jpg',
+      jsonUrl: '',
+    };
+    vi.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ barcode: '045496742843', count: 0, results: [] }), { status: 200 })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ barcode: '0045496742843', count: 1, results: [hit] }), { status: 200 })
+      );
+    const result = await searchChollwebVpsByBarcode('045496742843');
+    expect(result?.slug).toBe('super-mario-odyssey');
+  });
 });
 
 // ── resolveFromChollwebVps ────────────────────────────────────────────────────
 
 describe('resolveFromChollwebVps', () => {
-  beforeEach(() => vi.restoreAllMocks());
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.mocked(barcodeToTitle).mockResolvedValue(null);
+  });
 
   it('devuelve null si no hay titleHint ni barcode', async () => {
     const result = await resolveFromChollwebVps({});
@@ -283,12 +320,38 @@ describe('resolveFromChollwebVps', () => {
 
   // ── Ruta barcode-only ─────────────────────────────────────────────────────
 
-  it('ruta barcode: devuelve null si search.php no encuentra el EAN', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+  it('ruta barcode: devuelve null si search.php no encuentra el EAN ni hay fallback de título', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ barcode: '0000000000000', count: 0, results: [] }), { status: 200 })
     );
     const result = await resolveFromChollwebVps({ barcode: '0000000000000' });
     expect(result).toBeNull();
+    expect(barcodeToTitle).toHaveBeenCalledWith('0000000000000');
+  });
+
+  it('ruta barcode: fallback barcodeToTitle → browse cuando search.php falla', async () => {
+    const browseData = makeBrowseResponse();
+    const detail = makeGameDetail();
+
+    vi.mocked(barcodeToTitle).mockResolvedValueOnce({
+      title: 'Super Mario Odyssey',
+      platformHint: 'Switch',
+      editionHint: null,
+    });
+
+    vi.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ barcode: '045496742843', count: 0, results: [] }), { status: 200 })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ barcode: '045496742843', count: 0, results: [] }), { status: 200 })
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify(browseData), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(detail), { status: 200 }));
+
+    const result = await resolveFromChollwebVps({ barcode: '045496742843' });
+    expect(result?.title).toBe('Super Mario Odyssey');
+    expect(barcodeToTitle).toHaveBeenCalled();
   });
 
   it('ruta barcode: resuelve MetadataResult cuando el EAN está en el VPS', async () => {

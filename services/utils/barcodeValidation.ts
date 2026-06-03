@@ -9,6 +9,18 @@ export type BarcodeAssessment =
 
 const GTIN_LENGTHS = [8, 12, 13, 14] as const;
 
+/** Variantes UPC-A ↔ EAN-13 para consultas a APIs (mismo producto, distinto formato). */
+export function getGtinLookupVariants(barcode: string): string[] {
+  const clean = barcode.trim();
+  if (!clean) return [];
+  const variants = new Set<string>([clean]);
+  if (/^\d+$/.test(clean)) {
+    if (clean.length === 12) variants.add(`0${clean}`);
+    if (clean.length === 13 && clean.startsWith('0')) variants.add(clean.slice(1));
+  }
+  return [...variants];
+}
+
 /** Cuerpo numérico sin dígito de control (GS1). */
 export function computeGtinCheckDigit(body: string): number {
   let sum = 0;

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   assessBarcode,
   computeGtinCheckDigit,
+  getGtinLookupVariants,
   isValidGtin,
 } from '../services/utils/barcodeValidation';
 
@@ -43,5 +44,13 @@ describe('barcodeValidation', () => {
     expect(upc).toHaveLength(12);
     expect(isValidGtin(upc)).toBe(true);
     expect(assessBarcode(upc).ok).toBe(true);
+  });
+
+  it('UPC-A 12 dígitos añade EAN-13 con cero inicial', () => {
+    expect(getGtinLookupVariants('045496742843')).toEqual(['045496742843', '0045496742843']);
+  });
+
+  it('EAN-13 con cero inicial añade UPC-A', () => {
+    expect(getGtinLookupVariants('0045496742843')).toEqual(['0045496742843', '045496742843']);
   });
 });

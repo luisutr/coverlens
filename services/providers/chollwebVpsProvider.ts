@@ -12,7 +12,10 @@
  */
 
 import { MetadataResult, ResolveInput } from './types';
+import { logBarcodeScan } from '../debug/barcodeScanLog';
 import { canonicalizePlatform } from '../utils/platformUtils';
+import { getGtinLookupVariants } from '../utils/barcodeValidation';
+import { barcodeToTitle, getBarcodeVariants } from '../utils/barcodeToTitle';
 
 const BASE_URL = 'https://covers.cholloweb.es';
 
@@ -118,6 +121,15 @@ type VpsSearchResponse = {
   results: VpsSearchResult[];
 };
 
+export function collectVpsBarcodeVariants(barcode: string): string[] {
+  const seen = new Set<string>();
+  for (const variant of [...getGtinLookupVariants(barcode), ...getBarcodeVariants(barcode)]) {
+    const v = variant.trim();
+    if (v && !seen.has(v)) seen.add(v);
+  }
+  return [...seen];
+}
+
 // ── Funciones de fetch ────────────────────────────────────────────────────────
 
 export async function searchChollwebVps(
@@ -153,7 +165,7 @@ export async function getChollwebVpsDetail(
   }
 }
 
-export async function searchChollwebVpsByBarcode(
+async function searchChollwebVpsByBarcodeOnce(
   barcode: string
 ): Promise<VpsSearchResult | null> {
   try {
@@ -161,12 +173,39 @@ export async function searchChollwebVpsByBarcode(
     const res = await fetch(`${BASE_URL}/api/search.php?${params}`, {
       headers: { Accept: 'application/json' },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      logBarcodeScan('vps.search.http_error', { barcode, status: res.status });
+      return null;
+    }
     const data = (await res.json()) as VpsSearchResponse;
-    return data.results?.[0] ?? null;
-  } catch {
+    const hit = data.results?.[0] ?? null;
+    logBarcodeScan(hit ? 'vps.search.hit' : 'vps.search.miss', {
+      barcode,
+      count: data.count ?? 0,
+      slug: hit?.slug,
+    });
+    return hit;
+  } catch (error) {
+    logBarcodeScan('vps.search.exception', { barcode, error: String(error).slice(0, 80) });
     return null;
   }
+}
+
+export async function searchChollwebVpsByBarcode(
+  barcode: string
+): Promise<VpsSearchResult | null> {
+  const variants = collectVpsBarcodeVariants(barcode);
+  logBarcodeScan('vps.search.start', { barcode, variants });
+  for (const variant of variants) {
+    const hit = await searchChollwebVpsByBarcodeOnce(variant);
+    if (hit) {
+      if (variant !== barcode) {
+        logBarcodeScan('vps.search.hit_variant', { scanned: barcode, matched: variant });
+      }
+      return hit;
+    }
+  }
+  return null;
 }
 
 // ── Selección del mejor resultado ─────────────────────────────────────────────
@@ -196,6 +235,75 @@ function pickBestResult(
   return scored[0]!.r;
 }
 
+type ResolvedBrowseHit = {
+  slug: string;
+  platformSlug: string;
+  title: string;
+  coverUrl: string | null;
+  rating: number | null;
+};
+
+async function resolveBrowseHit(
+  titleHint: string,
+  platformHint: string | null | undefined
+): Promise<ResolvedBrowseHit | null> {
+  const platformSlug = platformHint ? canonicalToVpsSlug(platformHint) : null;
+  logBarcodeScan('vps.browse.start', { titleHint, platformHint, platformSlug });
+  const data = await searchChollwebVps(titleHint, platformSlug, 5);
+  if (!data?.results?.length) {
+    logBarcodeScan('vps.browse.no_results', { titleHint, platformSlug });
+    return null;
+  }
+  const best = pickBestResult(data.results, titleHint);
+  if (!best) {
+    logBarcodeScan('vps.browse.low_similarity', {
+      titleHint,
+      candidates: data.results.map((r) => r.title).slice(0, 3),
+    });
+    return null;
+  }
+  logBarcodeScan('vps.browse.hit', {
+    titleHint,
+    slug: best.slug,
+    platformSlug: best.platformSlug,
+    matchedTitle: best.title,
+  });
+  return {
+    slug: best.slug,
+    platformSlug: best.platformSlug,
+    title: best.title,
+    coverUrl: best.coverUrl ?? null,
+    rating: best.rating,
+  };
+}
+
+async function buildMetadataFromResolvedHit(hit: ResolvedBrowseHit): Promise<MetadataResult> {
+  const detail = await getChollwebVpsDetail(hit.platformSlug, hit.slug);
+  const coverUrl =
+    hit.coverUrl ?? (detail?.coverPath ? `${BASE_URL}/${detail.coverPath}` : null);
+  const platform = canonicalizePlatform(detail?.platform ?? hit.platformSlug);
+  const isResolved = Boolean(
+    (detail?.genre || hit.rating != null) && (detail?.developer || detail?.publisher)
+  );
+
+  return {
+    title: detail?.title ?? hit.title,
+    platform,
+    version: detail?.version ?? null,
+    releaseYear: detail?.releaseYear ?? null,
+    genre: detail?.genre ?? null,
+    developer: detail?.developer ?? null,
+    publisher: detail?.publisher ?? null,
+    description: detail?.description ?? null,
+    rating: detail?.rating ?? hit.rating ?? null,
+    franchise: null,
+    coverUrl,
+    headerImageUrl: coverUrl,
+    status: isResolved ? 'resolved' : 'partial',
+    source: 'cholloweb',
+  };
+}
+
 // ── Portada: URL directa del VPS (browse) ────────────────────────────────────
 
 export async function resolveCoverFromChollwebVps(
@@ -221,67 +329,44 @@ export async function resolveFromChollwebVps(
   const titleHint = input.titleHint?.trim();
   const barcode = input.barcode?.trim();
 
-  let resolvedSlug: string;
-  let resolvedPlatformSlug: string;
-  let resolvedTitle: string;
-  let resolvedCoverUrl: string | null;
-  let resolvedRating: number | null;
-
-  if (!titleHint) {
-    // Ruta barcode-only: search.php?barcode=… (O(1) via barcodes_index.json)
-    if (!barcode) return null;
-    const hit = await searchChollwebVpsByBarcode(barcode);
-    if (!hit) return null;
-    resolvedSlug = hit.slug;
-    resolvedPlatformSlug = hit.platformSlug;
-    resolvedTitle = hit.title;
-    resolvedCoverUrl = hit.coverPath ? `${BASE_URL}/${hit.coverPath}` : null;
-    resolvedRating = null;
-  } else {
-    // Ruta título: browse.php?q=…
-    const platformHint = input.platformHint?.trim() ?? null;
-    const platformSlug = platformHint ? canonicalToVpsSlug(platformHint) : null;
-    const data = await searchChollwebVps(titleHint, platformSlug, 5);
-    if (!data?.results?.length) return null;
-    const best = pickBestResult(data.results, titleHint);
-    if (!best) return null;
-    resolvedSlug = best.slug;
-    resolvedPlatformSlug = best.platformSlug;
-    resolvedTitle = best.title;
-    resolvedCoverUrl = best.coverUrl ?? null;
-    resolvedRating = best.rating;
+  if (titleHint) {
+    const browseHit = await resolveBrowseHit(titleHint, input.platformHint?.trim() ?? null);
+    if (!browseHit) return null;
+    return buildMetadataFromResolvedHit(browseHit);
   }
 
-  // Ficha completa para género, developer, publisher, descripción
-  const detail = await getChollwebVpsDetail(resolvedPlatformSlug, resolvedSlug);
+  if (!barcode) return null;
 
-  const coverUrl =
-    resolvedCoverUrl ??
-    (detail?.coverPath ? `${BASE_URL}/${detail.coverPath}` : null);
+  logBarcodeScan('vps.barcode_route.start', { barcode });
+  const searchHit = await searchChollwebVpsByBarcode(barcode);
+  if (searchHit) {
+    return buildMetadataFromResolvedHit({
+      slug: searchHit.slug,
+      platformSlug: searchHit.platformSlug,
+      title: searchHit.title,
+      coverUrl: searchHit.coverPath ? `${BASE_URL}/${searchHit.coverPath}` : null,
+      rating: null,
+    });
+  }
 
-  const platform = canonicalizePlatform(detail?.platform ?? resolvedPlatformSlug);
+  logBarcodeScan('vps.barcode_route.search_miss', { barcode });
+  const fromTitle = await barcodeToTitle(barcode);
+  if (fromTitle?.title) {
+    logBarcodeScan('vps.barcode_route.title_fallback', {
+      barcode,
+      title: fromTitle.title,
+      platformHint: fromTitle.platformHint,
+      source: 'barcodeToTitle',
+    });
+    const browseHit = await resolveBrowseHit(
+      fromTitle.title,
+      fromTitle.platformHint ?? input.platformHint?.trim() ?? null
+    );
+    if (browseHit) return buildMetadataFromResolvedHit(browseHit);
+  }
 
-  const isResolved = Boolean(
-    (detail?.genre || resolvedRating != null) &&
-      (detail?.developer || detail?.publisher)
-  );
-
-  return {
-    title: detail?.title ?? resolvedTitle,
-    platform,
-    version: detail?.version ?? null,
-    releaseYear: detail?.releaseYear ?? null,
-    genre: detail?.genre ?? null,
-    developer: detail?.developer ?? null,
-    publisher: detail?.publisher ?? null,
-    description: detail?.description ?? null,
-    rating: detail?.rating ?? resolvedRating ?? null,
-    franchise: null,
-    coverUrl,
-    headerImageUrl: coverUrl,
-    status: isResolved ? 'resolved' : 'partial',
-    source: 'cholloweb',
-  };
+  logBarcodeScan('vps.barcode_route.failed', { barcode });
+  return null;
 }
 
 // ── Precio ────────────────────────────────────────────────────────────────────
