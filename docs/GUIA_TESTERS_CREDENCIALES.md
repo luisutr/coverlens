@@ -2,6 +2,8 @@
 
 **Manual de usuario completo:** [GUIA_USUARIO_COVERLENS.md](./GUIA_USUARIO_COVERLENS.md) (también en la app: **Ajustes → Cómo usar CoverLens**).
 
+**APK Android (instalar sin Expo Go):** enlace y build en curso en [APK_TESTERS_ACTUAL.md](./APK_TESTERS_ACTUAL.md).
+
 ## Es normal que sin credenciales veas menos cosas
 
 CoverLens guarda tu catálogo **en el móvil**. El **servicio integrado CoverLens** (`covers.cholloweb.es`) resuelve título, plataforma, portada y a veces valor **sin ninguna clave**. Para **más datos de ficha** (género, año, descripción, nota) y **más portadas**, puedes activar APIs opcionales.
