@@ -33,6 +33,8 @@ Tras fusionar metadatos, la **portada** del listado sigue la cadena de portadas 
 
 Por defecto: **CoverLens (integrado) → PriceCharting → eBay**. GameplayStores desactivado.
 
+Los importes son **estimaciones orientativas** (no tasación oficial). Copy unificado: `constants/valueEstimateDisclaimer.ts`. Aviso en ficha, catálogo, Ajustes → Cotización y guía de usuario.
+
 ## Reconocimiento de barcode (EAN)
 
 - **GameUPC:** fallback opcional con API key del usuario (Ajustes → APIs).

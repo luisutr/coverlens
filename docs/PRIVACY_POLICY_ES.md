@@ -65,6 +65,8 @@ Los datos se usan para:
 
 La app consulta un servidor del desarrollador en `https://covers.cholloweb.es/` para buscar metadatos, portadas y valores de mercado del catálogo. Las peticiones incluyen términos de búsqueda (título, plataforma), códigos de barras escaneados (EAN/UPC) y, en algunos casos, identificadores de juego en el catálogo del VPS. **No se envían credenciales del usuario ni datos de identificación personal** al VPS. No hay registro ni inicio de sesión en el VPS.
 
+Los **valores económicos** mostrados en la app (catálogo integrado, PriceCharting, eBay u otros) son **estimaciones orientativas**, no una tasación oficial ni un precio garantizado. El usuario debe contrastar la información antes de decisiones de compra o venta.
+
 Endpoints principales: `/api/browse.php` (búsqueda por título), `/api/search.php` (búsqueda por código de barras), `/games/{platform}/{slug}.json` (ficha completa).
 
 ### Proveedores externos opcionales

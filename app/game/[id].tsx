@@ -18,6 +18,10 @@ import {
 } from 'react-native';
 import { useFirstRunTour } from '../../contexts/FirstRunTourContext';
 import { ATTRIBUTIONS } from '../../constants/thirdPartyAttribution';
+import {
+  VALUE_ESTIMATE_DISCLAIMER_FULL,
+  VALUE_ESTIMATE_DISCLAIMER_SHORT,
+} from '../../constants/valueEstimateDisclaimer';
 import { theme } from '../../constants/theme';
 import {
   GameRecord,
@@ -619,6 +623,16 @@ export default function GameDetailScreen() {
               >
                 <Text style={styles.valueBtnText}>{priceBusy ? 'Actualizando…' : 'Actualizar valor'}</Text>
               </TouchableOpacity>
+              <Text style={styles.valueDisclaimer}>{VALUE_ESTIMATE_DISCLAIMER_SHORT}</Text>
+              <Pressable
+                onPress={() =>
+                  Alert.alert('Valor estimado', VALUE_ESTIMATE_DISCLAIMER_FULL, [{ text: 'Entendido' }])
+                }
+                accessibilityRole="button"
+                accessibilityLabel="Más información sobre el valor estimado"
+              >
+                <Text style={styles.valueDisclaimerLink}>Más información</Text>
+              </Pressable>
             </View>
           ) : null}
 
@@ -851,6 +865,19 @@ const styles = StyleSheet.create({
   valueTitle: { color: theme.colors.textDim, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
   valueBig: { color: '#9acd32', fontSize: 22, fontWeight: '800' },
   valueHint: { color: theme.colors.textDim, fontSize: 11, lineHeight: 16 },
+  valueDisclaimer: {
+    color: theme.colors.textDim,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 10,
+    fontStyle: 'italic',
+  },
+  valueDisclaimerLink: {
+    color: theme.colors.primary,
+    fontSize: 11,
+    marginTop: 4,
+    textDecorationLine: 'underline',
+  },
   valueActions: { flexDirection: 'row', gap: 10, marginTop: 6 },
   valueBtn: {
     flex: 1,

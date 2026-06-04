@@ -79,6 +79,7 @@
 <h2>7. Comunicaciones con terceros y servidor del desarrollador</h2>
 <h3>Servidor CoverLens VPS</h3>
 <p>La app consulta un servidor del desarrollador en <code><a href="https://covers.cholloweb.es/" rel="noopener noreferrer">https://covers.cholloweb.es/</a></code> para buscar metadatos, portadas y valores de mercado del catálogo. Las peticiones incluyen términos de búsqueda (título, plataforma), códigos de barras escaneados (EAN/UPC) y, en algunos casos, identificadores de juego en el catálogo del VPS. <strong>No se envían credenciales del usuario ni datos de identificación personal</strong> al VPS. No hay registro ni inicio de sesión en el VPS.</p>
+<p>Los <strong>valores económicos</strong> mostrados en la app (catálogo integrado, PriceCharting, eBay u otros) son <strong>estimaciones orientativas</strong>, no una tasación oficial ni un precio garantizado. El usuario debe contrastar la información antes de decisiones de compra o venta.</p>
 <p>Endpoints principales: <code>/api/browse.php</code> (búsqueda por título), <code>/api/search.php</code> (búsqueda por código de barras), <code>/games/{platform}/{slug}.json</code> (ficha completa).</p>
 <h3>Proveedores externos opcionales</h3>
 <p>Si el usuario activa fuentes externas o configura credenciales, la app realiza solicitudes de red a esos servicios. Cada proveedor tiene sus propios términos y políticas de privacidad:</p>

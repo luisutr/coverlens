@@ -5,7 +5,7 @@ Política pública completa: [docs/PRIVACY_POLICY_ES.md](docs/PRIVACY_POLICY_ES.
 
 ## Datos que maneja la app
 
-- Catálogo local de juegos (SQLite): título, plataforma, barcode, metadatos, URLs de portada/cabecera, valor estimado.
+- Catálogo local de juegos (SQLite): título, plataforma, barcode, metadatos, URLs de portada/cabecera, valor estimado (orientativo, no tasación oficial).
 - Credenciales API opcionales (SecureStore), solo si el usuario las configura.
 - Uso de cámara para escaneo de barcode y OCR local de portadas (procesamiento on-device con ML Kit).
 
@@ -42,6 +42,11 @@ Política pública completa: [docs/PRIVACY_POLICY_ES.md](docs/PRIVACY_POLICY_ES.
 Fuente Markdown: `docs/PRIVACY_POLICY_ES.md`. HTML estático: `docs/privacidad/index.html` (regenerar con `node scripts/build-privacy-html.mjs`).
 
 **Despliegue:** subir `docs/privacidad/index.html` al VPS LiteSpeed en `/privacidad/`. Si el host redirige todo al SPA de `/catalogo`, configurar excepción para servir el HTML estático.
+
+## Valor económico (declaración en tiendas)
+
+- Los importes en la app son **estimaciones orientativas** de fuentes públicas o de terceros; pueden estar desactualizados o no aplicar a la edición/región del usuario.
+- **No** constituyen asesoramiento financiero ni precio de venta garantizado. Recomendar contrastar antes de decidir (texto visible en ficha, catálogo y Ajustes).
 
 ## Referencia legal interna
 

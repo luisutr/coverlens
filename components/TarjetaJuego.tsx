@@ -85,7 +85,7 @@ export default function TarjetaJuego({
         <Text style={styles.plataforma} numberOfLines={1}>{plataforma}</Text>
         {valorLabel ? (
           <Text style={styles.valor} numberOfLines={1} accessibilityLabel={`Valor estimado ${valorLabel}`}>
-            {valorLabel}
+            est. {valorLabel}
           </Text>
         ) : null}
 

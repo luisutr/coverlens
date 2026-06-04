@@ -1,14 +1,16 @@
 # Guía para testers — APIs, portadas y cotización (opcional)
 
+**Manual de usuario completo:** [GUIA_USUARIO_COVERLENS.md](./GUIA_USUARIO_COVERLENS.md) (también en la app: **Ajustes → Cómo usar CoverLens**).
+
 ## Es normal que sin credenciales veas menos cosas
 
-CoverLens guarda tu catálogo **en el móvil**. Los **metadatos base** (título, plataforma, edición) pueden resolverse con **GameplayStores** sin ninguna clave. Para **más datos de ficha** (género, año, descripción, nota) y **más portadas**, puedes activar APIs opcionales.
+CoverLens guarda tu catálogo **en el móvil**. El **servicio integrado CoverLens** (`covers.cholloweb.es`) resuelve título, plataforma, portada y a veces valor **sin ninguna clave**. Para **más datos de ficha** (género, año, descripción, nota) y **más portadas**, puedes activar APIs opcionales.
 
 Si **no configuras** IGDB, SteamGridDB, ScreenScraper, etc.:
 
-- Puedes **añadir juegos** (escáner, título manual, import CSV/JSON) y obtener título/plataforma desde GameplayStores cuando el listado lo tenga.
-- Las **portadas** siguen la cadena de Ajustes (GameplayStores, SteamGridDB…); puede haber más huecos sin SteamGridDB/IGDB.
-- **IGDB** completa mucho la parte de texto y cabeceras; sin él las fichas suelen quedar «parciales» hasta que haya portada + un dato extra (p. ej. edición desde GPS).
+- Puedes **añadir juegos** (escáner, lote IA, título manual, import CSV/JSON) usando el catálogo integrado cuando haya match.
+- Las **portadas** siguen la cadena de Ajustes (CoverLens → SteamGridDB…); puede haber más huecos sin SteamGridDB/IGDB.
+- **IGDB** completa mucho la parte de texto; sin él las fichas suelen quedar «parciales» hasta que haya portada + un dato extra.
 
 **No es un fallo de la beta**: es el diseño (local-first + APIs opcionales).
 
@@ -18,14 +20,14 @@ Si **no configuras** IGDB, SteamGridDB, ScreenScraper, etc.:
 
 | Prioridad | Servicio | Para qué sirve |
 |-----------|----------|----------------|
-| **Sin clave** | **GameplayStores** | Metadatos de ficha por EAN o título+plataforma (orden en **«Orden de fuentes (metadatos)»**). |
+| **Sin clave** | **CoverLens (integrado)** | Metadatos, portadas y valor desde el catálogo VPS (primero en el orden por defecto). |
 | **Muy recomendado** | **IGDB** (vía Twitch) | Año, género, descripción, nota, portada/cabecera IGDB cuando existan. |
 | **Recomendado** | **SteamGridDB** | Más aciertos en portadas/rejillas cuando el título no coincide a la primera. |
 | **Opcional** | **ScreenScraper** | Metadatos y portadas de respaldo si lo activas en las cadenas de Ajustes. |
 | **Opcional** | **PriceCharting Pro** | Precio guía en USD en la ficha (requiere suscripción Pro con API). |
 | **Opcional** | **eBay Developers** | Mediana de anuncios activos (orientativo; no es precio de venta cerrada). |
 
-Puedes dejar solo GameplayStores, o añadir IGDB + SteamGridDB, y activar ScreenScraper u otras cuando quieras (todo configurable por orden y interruptores en Ajustes → Catálogo).
+Puedes dejar solo CoverLens integrado, o añadir IGDB + SteamGridDB, y activar ScreenScraper u otras cuando quieras (todo configurable por orden y interruptores en Ajustes → Catálogo).
 
 ---
 
@@ -124,12 +126,19 @@ No son necesarios para catalogar, escanear ni para la mayoría de portadas. Solo
 
 ---
 
+## Interpretación de precios (valor en ficha)
+
+- Todo importe mostrado es **orientativo**: VPS CoverLens, PriceCharting (guía USD), eBay (mediana de anuncios activos) o manual.
+- **No** es precio de venta cerrada ni tasación oficial. Si un tester reporta «precio incorrecto», anota fuente (etiqueta en ficha), edición del juego y región; no es necesariamente un bug de la app.
+
+---
+
 ## Resumen
 
 | Situación | Qué esperar |
 |-----------|--------------|
-| Sin ninguna API | Catálogo con GPS; fichas más «parciales» si falta portada o datos extra |
-| Solo GameplayStores (metadatos + portadas) | Título/plataforma desde tienda; portada si el JSON la trae |
+| Sin APIs de terceros | Catálogo con CoverLens integrado; fichas más «parciales» si falta portada o datos extra |
+| Solo CoverLens integrado | Título/plataforma/portada desde VPS cuando haya match en el catálogo |
 | + IGDB | Fichas de texto mucho mejores + portada/cabecera IGDB cuando existan |
 | + SteamGridDB (+ opcional ScreenScraper) | Mejor cobertura de portadas en el grid |
 | + PriceCharting y/o eBay | Valor orientativo en la ficha (opcional) |

@@ -5,4 +5,5 @@ Ideas y especificaciones pendientes de implementar, separadas del [ROADMAP.md](.
 | Documento | Descripción |
 |-----------|-------------|
 | [COMPARTIR_CATALOGO_WEB.md](./COMPARTIR_CATALOGO_WEB.md) | Compartir catálogo personal vía JSON/enlace y visualizarlo en covers.cholloweb.es/catalogo sin datos personales |
-| [PROCESAMIENTO_LOTE_LOMOS_IA.md](./PROCESAMIENTO_LOTE_LOMOS_IA.md) | Alta en lote desde foto de lomos en estantería + prompt Gemini (sustituye OCR nativo/terceros en el escáner) |
+| [LIMPIEZA_AJUSTES_VALORACION.md](./LIMPIEZA_AJUSTES_VALORACION.md) | Limpieza de herramientas de diagnóstico en Ajustes y sección colapsable con el valor económico total y por plataforma |
+| [AVISO_VALORES_ECONOMICOS.md](./AVISO_VALORES_ECONOMICOS.md) | ~~Aviso valores estimados~~ **Implementado** — ver `constants/valueEstimateDisclaimer.ts` |

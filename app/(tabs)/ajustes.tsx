@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { useFirstRunTour } from '../../contexts/FirstRunTourContext';
 import { theme } from '../../constants/theme';
+import { VALUE_ESTIMATE_DISCLAIMER_FULL } from '../../constants/valueEstimateDisclaimer';
 import { ATTRIBUTIONS, PRIVACY_POLICY_URL } from '../../constants/thirdPartyAttribution';
 import {
   GameRecord,
@@ -1064,9 +1065,15 @@ export default function AjustesScreen() {
           loading={importRunning}
         />
         <ActionRow
+          icon="book-outline"
+          label="Cómo usar CoverLens"
+          hint="Manual de usuario: colección, escáner, ficha, ajustes y APIs opcionales"
+          onPress={() => router.push('/documentacion-usuario')}
+        />
+        <ActionRow
           icon="document-text-outline"
           label="Documentación: portadas y fuentes"
-          hint="Portadas, metadatos (GameplayStores, IGDB…), valor y credenciales opcionales"
+          hint="Referencia técnica de fuentes de datos y orden de resolución"
           onPress={() => router.push('/documentacion-fuentes')}
         />
 
@@ -1203,6 +1210,7 @@ export default function AjustesScreen() {
             anuncios activos en el marketplace indicado (orientativo, no precio de subasta cerrada). Puedes usar solo
             eBay, solo PriceCharting, o ambos.
           </Text>
+          <Text style={[styles.sectionHint, styles.valueDisclaimerHint]}>{VALUE_ESTIMATE_DISCLAIMER_FULL}</Text>
           {field('PriceCharting token', 'priceChartingToken', 'token de la suscripción Pro', true)}
           <TouchableOpacity onPress={() => void Linking.openURL(providerLinks.priceCharting)}>
             <Text style={styles.link}>PriceCharting Pro / API →</Text>
@@ -1434,6 +1442,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 2,
     lineHeight: 17,
+  },
+  valueDisclaimerHint: {
+    marginTop: 10,
+    fontStyle: 'italic',
+    lineHeight: 18,
   },
   // Filas de acción
   actionRow: {

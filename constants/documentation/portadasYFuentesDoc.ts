@@ -64,6 +64,12 @@ export const PORTADAS_Y_FUENTES_SECTIONS: PortadasDocSection[] = [
     ],
   },
   {
+    heading: 'Valor económico (estimación)',
+    paragraphs: [
+      'Los importes de cotización son orientativos: catálogo integrado, PriceCharting, eBay o valor manual. No constituyen tasación oficial. El usuario debe contrastar antes de decisiones económicas (aviso en ficha, catálogo y Ajustes → Cotización).',
+    ],
+  },
+  {
     heading: 'Dónde se usa en la UI',
     paragraphs: [
       'En la ficha: «Completar metadatos» ejecuta la cadena de metadatos configurada y luego la de portadas; «Actualizar portada» solo la cadena de portadas (CoverLens → SteamGridDB → ScreenScraper → IGDB por defecto) sin tocar el resto de campos. La etiqueta «Portada · …» / «Ficha · …» se infiere del host de la URL o de la fuente que resolvió los metadatos. Reintentar metadatos en lote y descarga de portadas en lote recalculan el estado con la misma regla.',

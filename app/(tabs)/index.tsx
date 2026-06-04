@@ -30,6 +30,7 @@ import { getApiCredentials } from '../../services/credentialsStore';
 import { uniqueCanonicalPlatforms } from '../../services/utils/platformTokens';
 import { pickGridCoverDisplayUri } from '../../services/storage/coverThumbUrls';
 import { formatMoneyMinor } from '../../services/utils/moneyFormat';
+import { VALUE_ESTIMATE_CATALOG_FOOTNOTE } from '../../constants/valueEstimateDisclaimer';
 
 const SORT_OPTIONS: { key: CatalogSort; label: string }[] = [
   { key: 'added_desc', label: 'Reciente' },
@@ -179,6 +180,11 @@ export default function HomeScreen() {
   const listHeaderPaddingTop =
     games.length > 0 ? insets.top + STICKY_FILTER_BAR_BODY : insets.top + 8;
 
+  const hasAnyValueEstimate = React.useMemo(
+    () => games.some((g) => g.valueCents != null && g.valueCents > 0),
+    [games]
+  );
+
   const listHeader = React.useMemo(
     () => (
       <View style={[styles.listHeader, { paddingTop: listHeaderPaddingTop }]}>
@@ -252,6 +258,10 @@ export default function HomeScreen() {
             )}
           </ScrollView>
         ) : null}
+
+        {hasAnyValueEstimate ? (
+          <Text style={styles.valueCatalogFootnote}>{VALUE_ESTIMATE_CATALOG_FOOTNOTE}</Text>
+        ) : null}
       </View>
     ),
     [
@@ -263,6 +273,7 @@ export default function HomeScreen() {
       partial,
       errors,
       fontsLoaded,
+      hasAnyValueEstimate,
     ]
   );
 
@@ -722,6 +733,13 @@ const styles = StyleSheet.create({
     color: theme.colors.textDim,
     fontSize: 11,
     marginTop: 8,
+  },
+  valueCatalogFootnote: {
+    color: theme.colors.textDim,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 10,
+    fontStyle: 'italic',
   },
   statsRow: {
     flexDirection: 'row',

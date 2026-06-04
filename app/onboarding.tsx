@@ -317,7 +317,8 @@ export default function OnboardingScreen() {
             <Text style={styles.bodyMuted}>
               Cotización (opcional): en Ajustes → APIs puedes añadir PriceCharting Pro (token de suscripción con API) y/o
               eBay Developers (Client ID y Secret de una app gratuita; no es tu contraseña de compras). Sirven solo para
-              valor orientativo en la ficha; no hacen falta para catalogar ni portadas.
+              valor orientativo en la ficha; no hacen falta para catalogar ni portadas. Es una estimación: contrasta la
+              información antes de tomar decisiones de compra o venta.
             </Text>
           </View>
         ) : null}
