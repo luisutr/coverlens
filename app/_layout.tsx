@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import React from 'react';
 import { View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { FirstRunTourOverlay } from '../components/FirstRunTourOverlay';
 import { FirstRunTourProvider } from '../contexts/FirstRunTourContext';
 import { PORTADAS_DOC_TITLE } from '../constants/documentation/portadasYFuentesDoc';
@@ -9,8 +10,9 @@ import { theme } from '../constants/theme';
 
 export default function RootLayout() {
   return (
-    <FirstRunTourProvider>
-      <View style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <FirstRunTourProvider>
+        <View style={{ flex: 1 }}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="onboarding" />
@@ -39,7 +41,8 @@ export default function RootLayout() {
           <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
         </Stack>
         <FirstRunTourOverlay />
-      </View>
-    </FirstRunTourProvider>
+        </View>
+      </FirstRunTourProvider>
+    </GestureHandlerRootView>
   );
 }

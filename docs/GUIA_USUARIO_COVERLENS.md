@@ -28,6 +28,7 @@ CoverLens es un catálogo personal de videojuegos físicos en el móvil: portada
 - **Filtrar** por plataforma, favoritos o «solo disco».
 - **Ordenar** por fecha de alta, título, plataforma, año, puntuación o valor.
 - **Tocar** una tarjeta → ficha del juego.
+- **Vista Grid / Slide:** icono junto a COVERLENS (arriba a la derecha del logo). En **Slide**: desliza para cambiar de juego; **doble toque** = favorito con animación; **toque simple** = abrir ficha.
 
 ### Escáner
 

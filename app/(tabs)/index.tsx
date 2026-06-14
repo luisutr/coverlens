@@ -19,8 +19,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TarjetaJuego from '../../components/TarjetaJuego';
+import CatalogSlideDeck from '../../components/CatalogSlideDeck';
 import { theme } from '../../constants/theme';
-import { GameRecord, deleteGame, getGames, initDatabase } from '../../database/dbConfig';
+import { GameRecord, deleteGame, getGames, initDatabase, setFavorite } from '../../database/dbConfig';
 import {
   type CatalogFilters,
   type CatalogSort,
@@ -31,6 +32,11 @@ import { uniqueCanonicalPlatforms } from '../../services/utils/platformTokens';
 import { pickGridCoverDisplayUri } from '../../services/storage/coverThumbUrls';
 import { formatMoneyMinor } from '../../services/utils/moneyFormat';
 import { VALUE_ESTIMATE_CATALOG_FOOTNOTE } from '../../constants/valueEstimateDisclaimer';
+import {
+  type CatalogViewMode,
+  getCatalogViewMode,
+  setCatalogViewMode,
+} from '../../services/catalogViewMode';
 
 const SORT_OPTIONS: { key: CatalogSort; label: string }[] = [
   { key: 'added_desc', label: 'Reciente' },
@@ -62,6 +68,14 @@ export default function HomeScreen() {
   const [onlyDiscOnly, setOnlyDiscOnly] = React.useState(false);
   const [sort, setSort] = React.useState<CatalogSort>('added_desc');
   const [igdbClientId, setIgdbClientId] = React.useState<string>('');
+  const [viewMode, setViewMode] = React.useState<CatalogViewMode>('grid');
+  const [slideIndex, setSlideIndex] = React.useState(0);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      void getCatalogViewMode().then(setViewMode);
+    }, [])
+  );
 
   useFocusEffect(
     React.useCallback(() => {
@@ -91,6 +105,13 @@ export default function HomeScreen() {
     () => filterAndSortGames(games, filters, sort),
     [games, filters, sort]
   );
+
+  React.useEffect(() => {
+    setSlideIndex((i) => {
+      if (displayedGames.length === 0) return 0;
+      return Math.min(i, displayedGames.length - 1);
+    });
+  }, [displayedGames.length, search, platformFilter, onlyFavorite, onlyDiscOnly, sort]);
 
   const sortLabel = React.useMemo(
     () => SORT_OPTIONS.find((o) => o.key === sort)?.label ?? 'Reciente',
@@ -150,6 +171,29 @@ export default function HomeScreen() {
     [router]
   );
 
+  const onToggleViewMode = React.useCallback(() => {
+    setViewMode((prev) => {
+      const next: CatalogViewMode = prev === 'grid' ? 'slide' : 'grid';
+      void setCatalogViewMode(next);
+      return next;
+    });
+  }, []);
+
+  const onToggleFavoriteGame = React.useCallback(
+    (gameId: number) => {
+      setGames((prev) => {
+        const game = prev.find((g) => g.id === gameId);
+        if (!game) return prev;
+        const nextFav = game.favorite === 1 ? 0 : 1;
+        void setFavorite(gameId, nextFav).catch(() => {
+          Alert.alert('Error', 'No se pudo actualizar el favorito.');
+        });
+        return prev.map((g) => (g.id === gameId ? { ...g, favorite: nextFav } : g));
+      });
+    },
+    []
+  );
+
   const resolved = games.filter((g) => g.metadataStatus === 'resolved').length;
   const partial = games.filter((g) => g.metadataStatus === 'partial').length;
   const errors = games.filter((g) => g.metadataStatus === 'error').length;
@@ -207,6 +251,19 @@ export default function HomeScreen() {
             </Text>
             <Text style={styles.brandTagline}>Tu colección en la mano</Text>
           </View>
+          <Pressable
+            style={styles.viewModeToggle}
+            onPress={onToggleViewMode}
+            accessibilityRole="button"
+            accessibilityLabel={viewMode === 'grid' ? 'Cambiar a vista slide' : 'Cambiar a vista grid'}
+            accessibilityState={{ selected: viewMode === 'slide' }}
+          >
+            <Ionicons
+              name={viewMode === 'grid' ? 'albums-outline' : 'grid-outline'}
+              size={22}
+              color={viewMode === 'slide' ? theme.colors.primary : theme.colors.textDim}
+            />
+          </Pressable>
         </View>
 
         <View style={styles.searchStatsRow}>
@@ -274,6 +331,8 @@ export default function HomeScreen() {
       errors,
       fontsLoaded,
       hasAnyValueEstimate,
+      viewMode,
+      onToggleViewMode,
     ]
   );
 
@@ -458,40 +517,55 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
-      <Animated.FlatList
-        style={styles.gameList}
-        data={listData}
-        keyExtractor={(item) => String(item.id)}
-        numColumns={2}
-        ListHeaderComponent={listHeader}
-        renderItem={({ item }) => (
-          <View style={styles.gridCell}>
-            <TarjetaJuego
-              id={item.id}
-              titulo={item.title}
-              plataforma={item.platform}
-              coverUrl={pickGridCoverDisplayUri(item.coverUrl, item.coverLocalThumbUri)}
-              metadataStatus={item.metadataStatus}
-              favorito={item.favorite === 1}
-              soloDisco={item.discOnly === 1}
-              valorLabel={formatMoneyMinor(item.valueCents ?? null, item.valueCurrency ?? null)}
-              igdbClientId={igdbClientId || null}
-              onOpen={onOpenGame}
-              onDelete={onDeleteGame}
-            />
-          </View>
-        )}
-        ListEmptyComponent={renderListEmpty}
-        contentContainerStyle={[
-          styles.gridList,
-          listData.length === 0 && styles.gridListEmpty,
-        ]}
-        columnWrapperStyle={listData.length > 0 ? styles.gridRow : undefined}
-        initialNumToRender={12}
-        windowSize={7}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-      />
+      {viewMode === 'grid' ? (
+        <Animated.FlatList
+          style={styles.gameList}
+          data={listData}
+          keyExtractor={(item) => String(item.id)}
+          numColumns={2}
+          ListHeaderComponent={listHeader}
+          renderItem={({ item }) => (
+            <View style={styles.gridCell}>
+              <TarjetaJuego
+                id={item.id}
+                titulo={item.title}
+                plataforma={item.platform}
+                coverUrl={pickGridCoverDisplayUri(item.coverUrl, item.coverLocalThumbUri)}
+                metadataStatus={item.metadataStatus}
+                favorito={item.favorite === 1}
+                soloDisco={item.discOnly === 1}
+                valorLabel={formatMoneyMinor(item.valueCents ?? null, item.valueCurrency ?? null)}
+                igdbClientId={igdbClientId || null}
+                onOpen={onOpenGame}
+                onDelete={onDeleteGame}
+              />
+            </View>
+          )}
+          ListEmptyComponent={renderListEmpty}
+          contentContainerStyle={[
+            styles.gridList,
+            listData.length === 0 && styles.gridListEmpty,
+          ]}
+          columnWrapperStyle={listData.length > 0 ? styles.gridRow : undefined}
+          initialNumToRender={12}
+          windowSize={7}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+        />
+      ) : (
+        <View style={styles.slideRoot}>
+          {listHeader}
+          <CatalogSlideDeck
+            games={listData}
+            currentIndex={slideIndex}
+            onIndexChange={setSlideIndex}
+            onOpen={onOpenGame}
+            onToggleFavorite={onToggleFavoriteGame}
+            igdbClientId={igdbClientId || null}
+            emptyComponent={renderListEmpty()}
+          />
+        </View>
+      )}
 
       {games.length > 0 ? (
         <View style={[styles.stickyChromeWrap, { paddingTop: insets.top }]} pointerEvents="box-none">
@@ -663,6 +737,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     marginBottom: 12,
+  },
+  viewModeToggle: {
+    marginLeft: 'auto',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(18, 22, 28, 0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(42, 42, 42, 0.9)',
+  },
+  slideRoot: {
+    flex: 1,
   },
   brandIcon: {
     width: 52,

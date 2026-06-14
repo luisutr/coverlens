@@ -34,12 +34,14 @@ export const USER_GUIDE_SECTIONS: UserGuideSection[] = [
     heading: 'Pestaña Colección',
     paragraphs: [
       'Lista todos tus juegos en tarjetas con portada. Toca una tarjeta para abrir la ficha del juego.',
+      'Puedes alternar entre vista Grid (cuadrícula) y vista Slide (carta grande) con el icono junto al título COVERLENS, sin añadir otra fila de controles.',
     ],
     bullets: [
       'Buscar: filtra por texto en el título.',
       'Plataforma: filtra por consola (solo las que ya tienes en el catálogo).',
       'Favoritos / Solo disco: atajos para ver solo esos juegos.',
       'Ordenar: reciente, título, plataforma, año, puntuación o valor estimado.',
+      'Vista Slide: desliza ← siguiente juego, → anterior; doble toque en la portada = favorito (animación de corazón); toque simple = abrir ficha.',
       'Mantén pulsado un juego (si está disponible) o usa la ficha para eliminar desde allí.',
     ],
   },
