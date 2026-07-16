@@ -792,11 +792,11 @@ export default function EscanerScreen() {
               <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalTitle}>Juego no encontrado</Text>
                 <Text style={styles.modalSubtitle}>
-                  {'Código '}
+                  {'El código '}
                   <Text style={{ color: theme.colors.primary, fontFamily: 'monospace' }}>{notFoundBarcode}</Text>
-                  {
-                    ' escaneado pero no está en el catálogo.\nIndica título y, si puedes, plataforma (como en la tienda: «Juego - PS4»).'
-                  }
+                  {' no se encuentra en ninguna de las fuentes activas.\n\nPuedes añadirlo ahora escribiendo el título y la plataforma, o activar fuentes adicionales en '}
+                  <Text style={{ color: theme.colors.primary, fontWeight: '700' }}>Ajustes → APIs de metadatos</Text>
+                  {' (IGDB, ScreenScraper, GameUPC) para mejorar el reconocimiento automático.'}
                 </Text>
 
                 <Text style={styles.modalLabel}>Título del juego</Text>
