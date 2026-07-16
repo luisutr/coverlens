@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { ApiCredentials, getApiCredentials, providerLinks, saveApiCredentials } from '../services/credentialsStore';
+import { PRIVACY_POLICY_URL } from '../constants/thirdPartyAttribution';
 import { completeFirstRunTour, enableFirstRunTour } from '../services/firstRunTour';
 import { setOnboardingDone } from '../services/onboardingState';
 
@@ -50,6 +51,7 @@ export default function OnboardingScreen() {
     Orbitron_900Black,
   });
   const [step, setStep] = React.useState(0);
+  const [privacyAccepted, setPrivacyAccepted] = React.useState(false);
   const [form, setForm] = React.useState<ApiCredentials>({
     screenScraperUsername: '',
     screenScraperPassword: '',
@@ -123,11 +125,22 @@ export default function OnboardingScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.topBar}>
-          <Text style={styles.progress}>
+          <Text
+            style={styles.progress}
+            accessibilityRole="text"
+            accessibilityLabel={`Paso ${step + 1} de ${TOTAL_STEPS}`}
+          >
             Paso {step + 1} / {TOTAL_STEPS}
           </Text>
           {step === 0 ? (
-            <Pressable onPress={skipEntireOnboarding} hitSlop={12}>
+            <Pressable
+              onPress={privacyAccepted ? skipEntireOnboarding : undefined}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Saltar configuración"
+              accessibilityHint="Acepta la política de privacidad para continuar"
+              style={{ opacity: privacyAccepted ? 1 : 0.4 }}
+            >
               <Text style={styles.skipLink}>Saltar</Text>
             </Pressable>
           ) : (
@@ -172,6 +185,31 @@ export default function OnboardingScreen() {
               Si quieres usar reconocimiento de barcode con GameUPC como fallback adicional, puedes añadir tu clave en Ajustes → APIs.
               En Ajustes → Catálogo puedes ordenar y activar cada fuente por separado.
             </Text>
+
+            {/* Aceptación de política de privacidad */}
+            <Pressable
+              style={styles.privacyRow}
+              onPress={() => setPrivacyAccepted((v) => !v)}
+              accessibilityRole="checkbox"
+              accessibilityLabel="Acepto la política de privacidad de CoverLens"
+              accessibilityState={{ checked: privacyAccepted }}
+            >
+              <View style={[styles.checkbox, privacyAccepted && styles.checkboxChecked]}>
+                {privacyAccepted ? (
+                  <Text style={styles.checkmark}>✓</Text>
+                ) : null}
+              </View>
+              <Text style={styles.privacyText}>
+                He leído y acepto la{' '}
+                <Text
+                  style={styles.privacyLink}
+                  onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
+                  accessibilityRole="link"
+                >
+                  política de privacidad
+                </Text>
+              </Text>
+            </Pressable>
           </View>
         ) : null}
 
@@ -214,11 +252,18 @@ export default function OnboardingScreen() {
               autoCapitalize="none"
               secureTextEntry
             />
-            <Pressable onPress={() => openLink(providerLinks.igdb)}>
+            <Pressable
+              onPress={() => openLink(providerLinks.igdb)}
+              accessibilityRole="link"
+              accessibilityLabel="Crear credenciales en Twitch, abre en el navegador"
+            >
               <Text style={styles.link}>Crear credenciales en Twitch →</Text>
             </Pressable>
             <Pressable
               style={styles.textBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Continuar sin IGDB"
+              accessibilityHint="Puedes configurar IGDB más tarde en Ajustes"
               onPress={() =>
                 Alert.alert(
                   'Continuar sin IGDB',
@@ -261,7 +306,11 @@ export default function OnboardingScreen() {
               autoCapitalize="none"
               secureTextEntry
             />
-            <Pressable onPress={() => openLink(providerLinks.steamGridDb)}>
+            <Pressable
+              onPress={() => openLink(providerLinks.steamGridDb)}
+              accessibilityRole="link"
+              accessibilityLabel="Obtener API key de SteamGridDB, abre en el navegador"
+            >
               <Text style={styles.link}>Obtener API key →</Text>
             </Pressable>
           </View>
@@ -300,7 +349,11 @@ export default function OnboardingScreen() {
               autoCapitalize="none"
               secureTextEntry
             />
-            <Pressable onPress={() => openLink(providerLinks.screenScraper)}>
+            <Pressable
+              onPress={() => openLink(providerLinks.screenScraper)}
+              accessibilityRole="link"
+              accessibilityLabel="Crear cuenta en ScreenScraper, abre en el navegador"
+            >
               <Text style={styles.link}>Crear cuenta ScreenScraper →</Text>
             </Pressable>
           </View>
@@ -325,15 +378,34 @@ export default function OnboardingScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable onPress={goBack} disabled={step === 0} style={[styles.btnSecondary, step === 0 && styles.btnDisabled]}>
+        <Pressable
+          onPress={goBack}
+          disabled={step === 0}
+          style={[styles.btnSecondary, step === 0 && styles.btnDisabled]}
+          accessibilityRole="button"
+          accessibilityLabel="Paso anterior"
+          accessibilityState={{ disabled: step === 0 }}
+        >
           <Text style={styles.btnSecondaryText}>Atrás</Text>
         </Pressable>
         {step < TOTAL_STEPS - 1 ? (
-          <Pressable onPress={goNext} style={styles.btnPrimary}>
+          <Pressable
+            onPress={goNext}
+            style={[styles.btnPrimary, step === 0 && !privacyAccepted && styles.btnDisabled]}
+            disabled={step === 0 && !privacyAccepted}
+            accessibilityRole="button"
+            accessibilityLabel={`Paso siguiente, ${step + 2} de ${TOTAL_STEPS}`}
+            accessibilityState={{ disabled: step === 0 && !privacyAccepted }}
+          >
             <Text style={styles.btnPrimaryText}>Siguiente</Text>
           </Pressable>
         ) : (
-          <Pressable onPress={() => void finish()} style={styles.btnPrimary}>
+          <Pressable
+            onPress={() => void finish()}
+            style={styles.btnPrimary}
+            accessibilityRole="button"
+            accessibilityLabel="Guardar credenciales e iniciar guía práctica"
+          >
             <Text style={styles.btnPrimaryText}>Guardar y guía</Text>
           </Pressable>
         )}
@@ -454,4 +526,40 @@ const styles = StyleSheet.create({
   },
   btnSecondaryText: { color: BRAND.ink, fontSize: 16, fontWeight: '700' },
   btnDisabled: { opacity: 0.45 },
+  privacyRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: 4,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: BRAND.blue,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  checkboxChecked: {
+    backgroundColor: BRAND.blue,
+  },
+  checkmark: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  privacyText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 19,
+    color: BRAND.ink,
+  },
+  privacyLink: {
+    color: BRAND.blue,
+    textDecorationLine: 'underline',
+    fontWeight: '700',
+  },
 });

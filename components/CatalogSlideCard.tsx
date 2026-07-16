@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../constants/theme';
 import { GameRecord } from '../database/dbConfig';
 import HeartBurstOverlay from './HeartBurstOverlay';
@@ -9,20 +9,26 @@ import { getIgdbImageRequestHeadersSync } from '../services/igdbImageRequest';
 import { pickGridCoverDisplayUri } from '../services/storage/coverThumbUrls';
 import { formatMoneyMinor } from '../services/utils/moneyFormat';
 
+/** Altura fija del área de portada: evita saltos al cambiar de slot en el carrusel. */
+export const SLIDE_COVER_HEIGHT = 300;
+
 type Props = {
   game: GameRecord;
-  indexLabel: string;
+  indexLabel?: string;
   igdbClientId?: string | null;
-  heartTrigger: number;
-  heartBurstFavorited: boolean;
+  heartTrigger?: number;
+  heartBurstFavorited?: boolean;
+  /** Solo la ficha activa muestra favorito / corazón. */
+  showInteractive?: boolean;
 };
 
-export default function CatalogSlideCard({
+function CatalogSlideCardInner({
   game,
   indexLabel,
   igdbClientId,
-  heartTrigger,
-  heartBurstFavorited,
+  heartTrigger = 0,
+  heartBurstFavorited = false,
+  showInteractive = false,
 }: Props) {
   const coverUrl = pickGridCoverDisplayUri(game.coverUrl, game.coverLocalThumbUri);
   const coverHeaders = getIgdbImageRequestHeadersSync(coverUrl, igdbClientId ?? undefined);
@@ -36,14 +42,15 @@ export default function CatalogSlideCard({
   const valorLabel = formatMoneyMinor(game.valueCents ?? null, game.valueCurrency ?? null);
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, showInteractive && styles.cardActive]}>
       <View style={styles.coverWrap}>
         {coverSource ? (
           <Image
             source={coverSource}
             style={styles.cover}
             contentFit="contain"
-            transition={200}
+            transition={0}
+            recyclingKey={`slide-${game.id}`}
             cachePolicy="memory-disk"
           />
         ) : (
@@ -52,11 +59,15 @@ export default function CatalogSlideCard({
             <Text style={styles.coverPlaceholderText}>SIN CARÁTULA</Text>
           </View>
         )}
-        <HeartBurstOverlay trigger={heartTrigger} favorited={heartBurstFavorited} />
-        {game.favorite === 1 ? (
-          <View style={styles.favBadge}>
-            <Ionicons name="heart" size={16} color="#ff4268" />
-          </View>
+        {showInteractive ? (
+          <>
+            <HeartBurstOverlay trigger={heartTrigger} favorited={heartBurstFavorited} />
+            {game.favorite === 1 ? (
+              <View style={styles.favBadge}>
+                <Ionicons name="heart" size={16} color="#ff4268" />
+              </View>
+            ) : null}
+          </>
         ) : null}
       </View>
 
@@ -70,26 +81,48 @@ export default function CatalogSlideCard({
         <Text style={styles.value} numberOfLines={1}>
           est. {valorLabel}
         </Text>
-      ) : null}
-      <Text style={styles.indexLabel}>{indexLabel}</Text>
-      <Text style={styles.hint}>Doble toque: favorito · Toque: abrir ficha</Text>
+      ) : (
+        <View style={styles.valueSpacer} />
+      )}
+      {indexLabel ? <Text style={styles.indexLabel}>{indexLabel}</Text> : null}
+      {showInteractive ? (
+        <Text style={styles.hint}>Doble toque: favorito · Toque: abrir ficha</Text>
+      ) : (
+        <View style={styles.hintSpacer} />
+      )}
     </View>
   );
 }
 
+const CatalogSlideCard = React.memo(CatalogSlideCardInner);
+export default CatalogSlideCard;
+
 const styles = StyleSheet.create({
   card: {
-    flex: 1,
+    height: '100%',
     backgroundColor: '#111111',
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#1e1e1e',
     padding: 14,
     overflow: 'hidden',
   },
+  cardActive: {
+    borderColor: 'rgba(0, 127, 255, 0.35)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#007fff',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.28,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
+  },
   coverWrap: {
-    flex: 1,
-    minHeight: 280,
+    height: SLIDE_COVER_HEIGHT,
     borderRadius: 12,
     backgroundColor: '#1a1a1a',
     overflow: 'hidden',
@@ -124,17 +157,24 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     lineHeight: 24,
+    minHeight: 48,
   },
   platform: {
     color: theme.colors.primary,
     fontSize: 14,
     fontWeight: '700',
     marginTop: 4,
+    minHeight: 20,
   },
   value: {
     color: '#9acd32',
     fontSize: 13,
     fontWeight: '700',
+    marginTop: 4,
+    minHeight: 18,
+  },
+  valueSpacer: {
+    minHeight: 18,
     marginTop: 4,
   },
   indexLabel: {
@@ -142,6 +182,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 10,
     textAlign: 'center',
+    minHeight: 16,
   },
   hint: {
     color: theme.colors.textDim,
@@ -149,5 +190,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
     fontStyle: 'italic',
+    minHeight: 16,
+  },
+  hintSpacer: {
+    minHeight: 16,
+    marginTop: 4,
   },
 });

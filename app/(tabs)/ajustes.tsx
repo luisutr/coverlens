@@ -169,6 +169,27 @@ export default function AjustesScreen() {
   const [diagLog, setDiagLog] = React.useState<string[]>([]);
   const [diagRunning, setDiagRunning] = React.useState(false);
   const [coverProbeRunning, setCoverProbeRunning] = React.useState(false);
+  const [devMode, setDevMode] = React.useState(false);
+  const devTapCountRef = React.useRef(0);
+  const devTapTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onTitleTap = React.useCallback(() => {
+    devTapCountRef.current += 1;
+    if (devTapTimerRef.current) clearTimeout(devTapTimerRef.current);
+    devTapTimerRef.current = setTimeout(() => {
+      devTapCountRef.current = 0;
+    }, 2000);
+    if (devTapCountRef.current >= 7) {
+      devTapCountRef.current = 0;
+      setDevMode((prev) => {
+        const next = !prev;
+        Alert.alert(
+          next ? '🛠 Modo desarrollador activado' : 'Modo desarrollador desactivado',
+          next ? 'Se muestran las herramientas de diagnóstico.' : 'Herramientas de diagnóstico ocultas.'
+        );
+        return next;
+      });
+    }
+  }, []);
   const [coverDlRunning, setCoverDlRunning] = React.useState(false);
   const [coverDlProgress, setCoverDlProgress] = React.useState('');
   const [retryRunning, setRetryRunning] = React.useState(false);
@@ -791,7 +812,9 @@ export default function AjustesScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.screenTitle}>Ajustes</Text>
+      <Pressable onPress={onTitleTap} accessibilityRole="header">
+        <Text style={styles.screenTitle}>Ajustes</Text>
+      </Pressable>
 
       {/* ── Sección 1: Catálogo ─────────────────────────────────────────────── */}
       <View style={styles.section}>
@@ -1283,20 +1306,24 @@ export default function AjustesScreen() {
         />
         <View style={styles.divider} />
 
-        <ActionRow
-          icon="pulse-outline"
-          label="Ejecutar diagnóstico"
-          hint="IGDB, ScreenScraper, PriceCharting y eBay"
-          onPress={onDiagnostic}
-          loading={diagRunning || coverProbeRunning}
-        />
-        <ActionRow
-          icon="images-outline"
-          label="Probar portadas (Gears / Xbox 360)"
-          hint="SteamGridDB y ScreenScraper con tus credenciales guardadas"
-          onPress={onCoverSourcesProbe}
-          loading={coverProbeRunning || diagRunning}
-        />
+        {devMode ? (
+          <>
+            <ActionRow
+              icon="pulse-outline"
+              label="Ejecutar diagnóstico"
+              hint="IGDB, ScreenScraper, PriceCharting y eBay"
+              onPress={onDiagnostic}
+              loading={diagRunning || coverProbeRunning}
+            />
+            <ActionRow
+              icon="images-outline"
+              label="Probar portadas (Gears / Xbox 360)"
+              hint="SteamGridDB y ScreenScraper con tus credenciales guardadas"
+              onPress={onCoverSourcesProbe}
+              loading={coverProbeRunning || diagRunning}
+            />
+          </>
+        ) : null}
         <ActionRow
           icon="school-outline"
           label="Repetir guía inicial"
@@ -1324,7 +1351,7 @@ export default function AjustesScreen() {
           danger
         />
 
-        {diagLog.length > 0 && (
+        {devMode && diagLog.length > 0 ? (
           <View style={styles.logBox}>
             {diagLog.map((line, i) => (
               <Text key={i} style={styles.logLine} selectable>
@@ -1332,7 +1359,7 @@ export default function AjustesScreen() {
               </Text>
             ))}
           </View>
-        )}
+        ) : null}
       </View>
     </ScrollView>
   );

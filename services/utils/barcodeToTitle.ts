@@ -188,7 +188,6 @@ export function getBarcodeVariants(barcode: string): string[] {
 
   for (const ean of ean13Candidates) {
     if (!isValidEan13(ean)) {
-      console.log('[GPS] Checksum inválido para:', ean, '→ generando correcciones...');
       const digits = ean.split('');
       for (let pos = 0; pos < 12; pos++) {
         for (let d = 0; d <= 9; d++) {
@@ -210,36 +209,24 @@ export function getBarcodeVariants(barcode: string): string[] {
 
 async function fromGamePlayStores(barcode: string): Promise<BarcodeResult | null> {
   const variants = getBarcodeVariants(barcode);
-  console.log('[GPS] Variantes a probar para', barcode, ':', variants.length);
 
   for (const code of variants) {
     try {
       const res = await fetchWithTimeout(`${GAMEPLAYSTORES_URL}?s=${encodeURIComponent(code)}`, {
         headers: { Accept: 'application/json' },
       }, 10000);
-      console.log('[GPS] HTTP', res.status, 'para', code);
       if (!res.ok) continue;
       const text = await res.text();
-      if (!text.trim().startsWith('{')) {
-        console.log('[GPS] Respuesta no-JSON para', code);
-        continue;
-      }
+      if (!text.trim().startsWith('{')) continue;
       const data = JSON.parse(text) as { products?: Array<{ name?: string }> };
       const first = data.products?.[0]?.name;
       if (first) {
-        if (code !== barcode) {
-          console.log('[GPS] Barcode corregido:', barcode, '→', code);
-        }
-        console.log('[GPS]', code, '→', first);
         return parseGamePlayStoresName(first);
-      } else {
-        console.log('[GPS] Sin productos para', code);
       }
-    } catch (e) {
-      console.log('[GPS] Error para', code, ':', e);
+    } catch {
+      // continúa con la siguiente variante
     }
   }
-  console.log('[GPS] No encontrado:', barcode, '(probadas', variants.length, 'variantes)');
   return null;
 }
 
@@ -327,7 +314,6 @@ export async function fetchFirstGpsProductForBarcode(barcode: string): Promise<{
 
 export async function barcodeToTitle(barcode: string): Promise<BarcodeResult | null> {
   const clean = barcode.replace(/\s/g, '');
-  console.log('[barcodeToTitle] Buscando barcode:', clean);
 
   // GPS desactivado — nivel C (gameplaystores.es, sin confirmación de uso)
   // const fromGPS = await fromGamePlayStores(clean);

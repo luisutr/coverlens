@@ -6,9 +6,17 @@ type BotonAzulProps = {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 };
 
-export default function BotonAzul({ label, onPress, disabled = false }: BotonAzulProps) {
+export default function BotonAzul({
+  label,
+  onPress,
+  disabled = false,
+  accessibilityLabel,
+  accessibilityHint,
+}: BotonAzulProps) {
   return (
     <Pressable
       style={({ pressed }) => [
@@ -17,7 +25,12 @@ export default function BotonAzul({ label, onPress, disabled = false }: BotonAzu
         disabled ? styles.buttonDisabled : null,
       ]}
       onPress={onPress}
-      disabled={disabled}>
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled }}
+    >
       <Text style={styles.buttonText}>{label}</Text>
     </Pressable>
   );

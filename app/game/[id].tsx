@@ -454,7 +454,13 @@ export default function GameDetailScreen() {
           {/* Gradiente oscuro sobre la imagen */}
           <View style={styles.coverOverlay} />
           {/* Botón volver flotante sobre la imagen */}
-          <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
+          <Pressable
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Volver al catálogo"
+          >
             <Ionicons name="arrow-back" size={22} color="#fff" />
           </Pressable>
           {/* Título sobre la imagen */}
@@ -487,29 +493,52 @@ export default function GameDetailScreen() {
                 </Text>
               ) : null}
               {showIgdbAttribution ? (
-                <TouchableOpacity onPress={() => void Linking.openURL(ATTRIBUTIONS.igdb.url)}>
+                <TouchableOpacity
+                  onPress={() => void Linking.openURL(ATTRIBUTIONS.igdb.url)}
+                  accessibilityRole="link"
+                  accessibilityLabel={ATTRIBUTIONS.igdb.text}
+                >
                   <Text style={styles.attributionLabel}>{ATTRIBUTIONS.igdb.text}</Text>
                 </TouchableOpacity>
               ) : null}
               {showSteamGridAttribution ? (
-                <TouchableOpacity onPress={() => void Linking.openURL(ATTRIBUTIONS.steamGridDb.url)}>
+                <TouchableOpacity
+                  onPress={() => void Linking.openURL(ATTRIBUTIONS.steamGridDb.url)}
+                  accessibilityRole="link"
+                  accessibilityLabel={ATTRIBUTIONS.steamGridDb.text}
+                >
                   <Text style={styles.attributionLabel}>{ATTRIBUTIONS.steamGridDb.text}</Text>
                 </TouchableOpacity>
               ) : null}
               {showGameUpcAttribution ? (
-                <TouchableOpacity onPress={() => void Linking.openURL(ATTRIBUTIONS.gameUpc.url)}>
+                <TouchableOpacity
+                  onPress={() => void Linking.openURL(ATTRIBUTIONS.gameUpc.url)}
+                  accessibilityRole="link"
+                  accessibilityLabel={ATTRIBUTIONS.gameUpc.text}
+                >
                   <Text style={styles.attributionLabel}>{ATTRIBUTIONS.gameUpc.text}</Text>
                 </TouchableOpacity>
               ) : null}
             </View>
             {!editing ? (
-              <TouchableOpacity onPress={startEditing} style={styles.editBtn} hitSlop={12}>
+              <TouchableOpacity
+                onPress={startEditing}
+                style={styles.editBtn}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Editar ficha del juego"
+              >
                 <Ionicons name="pencil" size={16} color={theme.colors.primary} />
                 <Text style={styles.editBtnText}>Editar</Text>
               </TouchableOpacity>
             ) : (
               <View style={styles.editActions}>
-                <TouchableOpacity onPress={() => setEditing(false)} hitSlop={12}>
+                <TouchableOpacity
+                  onPress={() => setEditing(false)}
+                  hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancelar edición"
+                >
                   <Text style={styles.cancelText}>Cancelar</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -517,6 +546,9 @@ export default function GameDetailScreen() {
                   style={[styles.saveBtn, saving && { opacity: 0.5 }]}
                   disabled={saving}
                   hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel={saving ? 'Guardando cambios' : 'Guardar cambios'}
+                  accessibilityState={{ disabled: saving }}
                 >
                   <Text style={styles.saveBtnText}>{saving ? '...' : 'Guardar'}</Text>
                 </TouchableOpacity>
@@ -638,7 +670,13 @@ export default function GameDetailScreen() {
 
           {/* Toggles */}
           <View style={styles.toggleRow}>
-            <Pressable onPress={toggleFavorite} style={styles.toggleBtn}>
+            <Pressable
+              onPress={toggleFavorite}
+              style={styles.toggleBtn}
+              accessibilityRole="togglebutton"
+              accessibilityLabel={game.favorite === 1 ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+              accessibilityState={{ checked: game.favorite === 1 }}
+            >
               <Ionicons
                 name={game.favorite === 1 ? 'heart' : 'heart-outline'}
                 size={20}
@@ -646,7 +684,13 @@ export default function GameDetailScreen() {
               />
               <Text style={styles.toggleLabel}>Favorito</Text>
             </Pressable>
-            <Pressable onPress={toggleDiscOnly} style={styles.toggleBtn}>
+            <Pressable
+              onPress={toggleDiscOnly}
+              style={styles.toggleBtn}
+              accessibilityRole="togglebutton"
+              accessibilityLabel={game.discOnly === 1 ? 'Desmarcar solo disco' : 'Marcar como solo disco'}
+              accessibilityState={{ checked: game.discOnly === 1 }}
+            >
               <Ionicons
                 name={game.discOnly === 1 ? 'disc' : 'disc-outline'}
                 size={20}
@@ -663,6 +707,9 @@ export default function GameDetailScreen() {
                 style={[styles.retryBtn, styles.retryBtnHalf, retrying && { opacity: 0.5 }]}
                 onPress={onRetry}
                 disabled={retrying || coverRefreshing}
+                accessibilityRole="button"
+                accessibilityLabel={retrying ? 'Actualizando ficha del juego' : 'Actualizar ficha del juego'}
+                accessibilityState={{ disabled: retrying || coverRefreshing }}
               >
                 <Ionicons name="library-outline" size={17} color="#fff" />
                 <Text style={styles.retryBtnText} numberOfLines={2}>
@@ -673,6 +720,9 @@ export default function GameDetailScreen() {
                 style={[styles.retryBtn, styles.retryBtnHalf, styles.retryBtnAlt, coverRefreshing && { opacity: 0.5 }]}
                 onPress={onRefreshCoverOnly}
                 disabled={retrying || coverRefreshing}
+                accessibilityRole="button"
+                accessibilityLabel={coverRefreshing ? 'Actualizando portadas' : 'Actualizar portadas del juego'}
+                accessibilityState={{ disabled: retrying || coverRefreshing }}
               >
                 <Ionicons name="image-outline" size={17} color="#fff" />
                 <Text style={styles.retryBtnText} numberOfLines={2}>

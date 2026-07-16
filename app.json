@@ -28,9 +28,7 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.coverlens.app",
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.CAMERA"
       ],
       "versionCode": 3
     },
