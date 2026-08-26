@@ -21,7 +21,8 @@
 - [ ] Exportación JSON y compartir archivo.
 - [ ] Sesión de 15 min sin crash.
 
-## 4) Play Console
+## 4) Play Console (EAS Submit)
+> Si no has vinculado Expo con tu cuenta de Google Cloud, consulta la [GUIA_EAS_SUBMIT_PLAY_STORE.md](docs/GUIA_EAS_SUBMIT_PLAY_STORE.md)
 - [ ] Crear app (nombre: CoverLens).
 - [ ] Subir AAB firmado.
 - [ ] Ficha de tienda (descripción corta/larga, categoría, contacto, privacidad).

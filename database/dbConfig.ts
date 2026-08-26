@@ -2,7 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { SQLiteDatabase, openDatabaseAsync } from 'expo-sqlite';
 
-export type ValueSource = 'gameplaystores' | 'pricecharting' | 'ebay' | 'manual';
+export type ValueSource = 'gameplaystores' | 'pricecharting' | 'ebay' | 'manual' | 'cholloweb';
 
 export type GameRecord = {
   id: number;

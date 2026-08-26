@@ -29,7 +29,9 @@ import {
   initDatabase,
   removeDuplicatedBarcodes,
   updateGameMetadata,
+  updateGameValueEstimate,
 } from '../../database/dbConfig';
+import { resolveValueEstimateFromPreferences } from '../../services/valuePreferenceResolver';
 import {
   ApiCredentials,
   clearApiCredentials,
@@ -194,6 +196,8 @@ export default function AjustesScreen() {
   const [coverDlProgress, setCoverDlProgress] = React.useState('');
   const [retryRunning, setRetryRunning] = React.useState(false);
   const [retryProgress, setRetryProgress] = React.useState('');
+  const [valueBatchRunning, setValueBatchRunning] = React.useState(false);
+  const [valueBatchProgress, setValueBatchProgress] = React.useState('');
   const [importRunning, setImportRunning] = React.useState(false);
   const [importProgress, setImportProgress] = React.useState('');
   const [catalogGuideOpen, setCatalogGuideOpen] = React.useState(false);
@@ -404,6 +408,82 @@ export default function AjustesScreen() {
             })();
           },
         },
+      ]
+    );
+  }, []);
+
+  const onBatchUpdateValue = React.useCallback(async () => {
+    const prefs = await loadValueSourcePreferences();
+    const anyEnabled = prefs.order.some((id) => prefs.enabled[id]);
+    if (!anyEnabled) {
+      Alert.alert(
+        'Valor',
+        'Activa al menos una fuente en Ajustes → Catálogo → Orden de fuentes (valor en ficha).'
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Actualizar valor en lote',
+      'Se intentará obtener la valoración económica de todos tus juegos usando el orden de fuentes activas. Este proceso puede tardar en colecciones grandes (se hace con pausas para no sobrecargar los servicios). ¿Continuar?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Actualizar',
+          onPress: async () => {
+            setValueBatchRunning(true);
+            setValueBatchProgress('Cargando catálogo...');
+            try {
+              const creds = await getApiCredentials();
+              const games = await getGames();
+              
+              if (games.length === 0) {
+                Alert.alert('Catálogo vacío', 'No hay juegos para actualizar.');
+                return;
+              }
+
+              let i = 0;
+              for (const g of games) {
+                i++;
+                setValueBatchProgress(`Procesando ${i}/${games.length}: ${g.title}`);
+                
+                try {
+                  const res = await resolveValueEstimateFromPreferences({
+                    title: g.title,
+                    platform: g.platform,
+                    barcode: g.barcode,
+                    discOnly: g.discOnly === 1,
+                    creds,
+                    prefs,
+                  });
+                  
+                  if (res) {
+                    await updateGameValueEstimate(g.id, {
+                      valueCents: res.cents,
+                      valueCurrency: res.currency,
+                      valueSource: res.source,
+                      valueUpdatedAt: new Date().toISOString(),
+                    });
+                  }
+                } catch (e) {
+                  // Continuar con el siguiente en caso de error individual
+                }
+                
+                // Pausa de 1 segundo (1000ms) para respetar rate limits de terceros
+                if (i < games.length) {
+                  await new Promise((r) => setTimeout(r, 1000));
+                }
+              }
+              Alert.alert('Hecho', `Se procesaron ${games.length} juego(s) para actualizar su valor.`);
+            } catch {
+              Alert.alert('Error', 'No se pudo completar la actualización en lote.');
+            } finally {
+              setValueBatchRunning(false);
+              setValueBatchProgress('');
+              getGames().then((gs) => setGameCount(gs.length)).catch(() => {});
+            }
+          }
+        }
       ]
     );
   }, []);
@@ -1005,6 +1085,13 @@ export default function AjustesScreen() {
           </View>
         ) : null}
 
+        {valueBatchRunning && valueBatchProgress ? (
+          <View style={styles.progressBox}>
+            <ActivityIndicator color={theme.colors.primary} size="small" />
+            <Text style={styles.progressText} numberOfLines={2}>{valueBatchProgress}</Text>
+          </View>
+        ) : null}
+
         <ActionRow
           icon="refresh-circle-outline"
           label="Reintentar metadatos"
@@ -1017,7 +1104,14 @@ export default function AjustesScreen() {
           label="Descargar portadas en lote"
           hint="Miniaturas en disco para el catálogo; lento en colecciones grandes"
           onPress={onDownloadCoverBatch}
-          loading={coverDlRunning || retryRunning || importRunning}
+          loading={coverDlRunning || retryRunning || importRunning || valueBatchRunning}
+        />
+        <ActionRow
+          icon="pricetag-outline"
+          label="Actualizar valor en lote"
+          hint="Busca el precio de todos los juegos según las fuentes activas; lento"
+          onPress={onBatchUpdateValue}
+          loading={valueBatchRunning || coverDlRunning || retryRunning || importRunning}
         />
         <ActionRow
           icon="duplicate-outline"
