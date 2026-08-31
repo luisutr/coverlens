@@ -2,7 +2,7 @@
   "expo": {
     "name": "CoverLens",
     "slug": "coverlens",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "coverlens",
@@ -30,7 +30,7 @@
       "permissions": [
         "android.permission.CAMERA"
       ],
-      "versionCode": 3
+      "versionCode": 4
     },
     "web": {
       "output": "static",

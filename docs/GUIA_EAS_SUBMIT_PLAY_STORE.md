@@ -21,6 +21,11 @@ Expo necesita un archivo `.json` que actúa como "llave" para subir cosas en tu 
 7. En la lista, haz clic sobre la cuenta que acabas de crear, ve a la pestaña **Claves** (Keys), haz clic en **Añadir clave > Crear clave nueva**.
 8. Selecciona formato **JSON** y dale a Crear. **Se descargará un archivo `.json` a tu ordenador. Guárdalo bien y NO lo subas a GitHub.**
 
+## Paso 1.5: Habilitar la API de Google Play en Google Cloud
+Para que Google deje que la cuenta de servicio hable con Google Play, tienes que activar la API correspondiente en ese mismo proyecto de la nube:
+1. Entra en este enlace: [Habilitar Google Play Android Developer API](https://console.developers.google.com/apis/api/androidpublisher.googleapis.com/overview) (o búscalo en la barra superior de Google Cloud).
+2. Asegúrate de estar en tu proyecto y haz clic en el botón azul **HABILITAR** (Enable).
+
 ## Paso 2: Dar permisos a la clave en Google Play Console
 
 Esa llave existe, pero ahora Google Play tiene que aceptarla. En las versiones modernas de Play Console, la cuenta de servicio se añade como si fuera un trabajador más.
