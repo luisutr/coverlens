@@ -26,7 +26,8 @@
   "submit": {
     "production": {
       "android": {
-        "serviceAccountKeyPath": "./google-play-key.json"
+        "serviceAccountKeyPath": "./google-play-key.json",
+        "track": "production"
       }
     }
   }
