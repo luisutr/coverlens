@@ -153,6 +153,11 @@ function ActionRow({
 export default function AjustesScreen() {
   const router = useRouter();
   const { restartTour } = useFirstRunTour();
+  
+  const [portadasOpen, setPortadasOpen] = React.useState(false);
+  const [metadatosOpen, setMetadatosOpen] = React.useState(false);
+  const [valorOpen, setValorOpen] = React.useState(false);
+
   const [form, setForm] = React.useState<ApiCredentials>({
     screenScraperUsername: '',
     screenScraperPassword: '',
@@ -906,12 +911,21 @@ export default function AjustesScreen() {
         <View style={styles.divider} />
 
         <View style={styles.coverPrefSection}>
-          <Text style={styles.coverPrefSectionTitle}>Orden de fuentes (portadas)</Text>
-          <Text style={styles.coverPrefSectionHint}>
-            Misma cadena que «Actualizar portadas» en la ficha y «Descargar portadas en lote». Arriba se prueba antes;
-            desactiva fuentes que no quieras usar. CoverLens es la fuente integrada — el resto son opcionales.
-          </Text>
-          {coverPrefs.order.filter((id) => id !== 'gameplaystores').map((id, index, arr) => (
+          <TouchableOpacity 
+            style={styles.collapsibleHeader} 
+            onPress={() => setPortadasOpen(!portadasOpen)}
+            accessibilityRole="button"
+          >
+            <Text style={styles.coverPrefSectionTitle}>Fuentes de Portadas</Text>
+            <Ionicons name={portadasOpen ? "chevron-up" : "chevron-down"} size={20} color={theme.colors.textDim} />
+          </TouchableOpacity>
+          {portadasOpen && (
+            <View>
+              <Text style={styles.coverPrefSectionHint}>
+                Misma cadena que «Actualizar portadas» en la ficha y «Descargar portadas en lote». Arriba se prueba antes;
+                desactiva fuentes que no quieras usar. CoverLens es la fuente integrada — el resto son opcionales.
+              </Text>
+              {coverPrefs.order.filter((id) => id !== 'gameplaystores').map((id, index, arr) => (
             <View key={id} style={styles.coverPrefRow}>
               <View style={{ flex: 1, marginRight: 8 }}>
                 <Text style={styles.coverPrefLabel}>{COVER_PROVIDER_LABELS[id]}</Text>
@@ -958,16 +972,27 @@ export default function AjustesScreen() {
               </View>
             </View>
           ))}
+            </View>
+          )}
         </View>
 
         <View style={styles.coverPrefSection}>
-          <Text style={styles.coverPrefSectionTitle}>Orden de fuentes (metadatos de ficha)</Text>
-          <Text style={styles.coverPrefSectionHint}>
-            Escáner, búsqueda manual y «Completar metadatos» prueban cada fuente activa en este orden. Las primeras tienen
-            prioridad si hay conflicto (p. ej. título y plataforma); las siguientes solo rellenan datos que falten.
-            CoverLens es la fuente integrada. IGDB y ScreenScraper son opcionales: actívalos si tienes credenciales.
-          </Text>
-          {metadataPrefs.order.filter((id) => id !== 'gameplaystores').map((id, index, arr) => (
+          <TouchableOpacity 
+            style={styles.collapsibleHeader} 
+            onPress={() => setMetadatosOpen(!metadatosOpen)}
+            accessibilityRole="button"
+          >
+            <Text style={styles.coverPrefSectionTitle}>Fuentes de Metadatos de Ficha</Text>
+            <Ionicons name={metadatosOpen ? "chevron-up" : "chevron-down"} size={20} color={theme.colors.textDim} />
+          </TouchableOpacity>
+          {metadatosOpen && (
+            <View>
+              <Text style={styles.coverPrefSectionHint}>
+                Escáner, búsqueda manual y «Completar metadatos» prueban cada fuente activa en este orden. Las primeras tienen
+                prioridad si hay conflicto (p. ej. título y plataforma); las siguientes solo rellenan datos que falten.
+                CoverLens es la fuente integrada. IGDB y ScreenScraper son opcionales: actívalos si tienes credenciales.
+              </Text>
+              {metadataPrefs.order.filter((id) => id !== 'gameplaystores').map((id, index, arr) => (
             <View key={id} style={styles.coverPrefRow}>
               <View style={{ flex: 1, marginRight: 8 }}>
                 <Text style={styles.coverPrefLabel}>{METADATA_PROVIDER_LABELS[id]}</Text>
@@ -1014,15 +1039,26 @@ export default function AjustesScreen() {
               </View>
             </View>
           ))}
+            </View>
+          )}
         </View>
 
         <View style={styles.coverPrefSection}>
-          <Text style={styles.coverPrefSectionTitle}>Orden de fuentes (valor en ficha)</Text>
-          <Text style={styles.coverPrefSectionHint}>
-            «Actualizar valor» en la ficha del juego prueba cada fuente activa en este orden. CoverLens aporta valor
-            de mercado integrado. PriceCharting y eBay son opcionales y usan las credenciales de abajo si están activas.
-          </Text>
-          {valuePrefs.order.filter((id) => id !== 'gameplaystores').map((id, index, arr) => (
+          <TouchableOpacity 
+            style={styles.collapsibleHeader} 
+            onPress={() => setValorOpen(!valorOpen)}
+            accessibilityRole="button"
+          >
+            <Text style={styles.coverPrefSectionTitle}>Fuentes de Valor Económico</Text>
+            <Ionicons name={valorOpen ? "chevron-up" : "chevron-down"} size={20} color={theme.colors.textDim} />
+          </TouchableOpacity>
+          {valorOpen && (
+            <View>
+              <Text style={styles.coverPrefSectionHint}>
+                «Actualizar valor» en la ficha del juego prueba cada fuente activa en este orden. CoverLens aporta valor
+                de mercado integrado. PriceCharting y eBay son opcionales y usan las credenciales de abajo si están activas.
+              </Text>
+              {valuePrefs.order.filter((id) => id !== 'gameplaystores').map((id, index, arr) => (
             <View key={id} style={styles.coverPrefRow}>
               <View style={{ flex: 1, marginRight: 8 }}>
                 <Text style={styles.coverPrefLabel}>{VALUE_PROVIDER_LABELS[id]}</Text>
@@ -1069,6 +1105,8 @@ export default function AjustesScreen() {
               </View>
             </View>
           ))}
+            </View>
+          )}
         </View>
 
         {retryRunning && retryProgress ? (
@@ -1731,11 +1769,16 @@ const styles = StyleSheet.create({
     borderBottomColor: '#1a1a1a',
     backgroundColor: '#080808',
   },
+  collapsibleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
   coverPrefSectionTitle: {
     color: theme.colors.textLight,
     fontWeight: '700',
     fontSize: 14,
-    marginBottom: 6,
   },
   coverPrefSectionHint: {
     color: theme.colors.textDim,
