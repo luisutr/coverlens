@@ -328,11 +328,7 @@ export default function EscanerScreen() {
             try {
               // eslint-disable-next-line @typescript-eslint/no-require-imports
               const ImagePicker = require('expo-image-picker') as typeof import('expo-image-picker');
-              const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-              if (!permission.granted) {
-                Alert.alert('Permiso denegado', 'Se requiere acceso a la galería para seleccionar fotos.');
-                return;
-              }
+              // Eliminada la petición explícita de permisos por política de Android 13+
               const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ['images'],
                 quality: 0.9,
