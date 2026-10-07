@@ -1092,7 +1092,7 @@ const styles = StyleSheet.create({
   permissionBox: { gap: 12, marginBottom: 12 },
   cameraWrap: { borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#2b2b2b', marginBottom: 8, position: 'relative' },
   camera: { width: '100%', height: 240 },
-  cameraOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  cameraOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', gap: 10 },
   cameraOverlayText: { color: '#fff', fontWeight: '600' },
   helpText: { color: theme.colors.textDim, fontSize: 12, marginBottom: 10, lineHeight: 18 },
   ocrContainer: { gap: 14 },

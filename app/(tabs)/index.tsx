@@ -911,7 +911,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   platformModalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
   platformModalSheet: {

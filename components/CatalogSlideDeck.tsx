@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -15,13 +15,17 @@ import { theme } from '../constants/theme';
 import { GameRecord } from '../database/dbConfig';
 import CatalogSlideCard, { SLIDE_COVER_HEIGHT } from './CatalogSlideCard';
 
-const { width: SCREEN_W } = Dimensions.get('window');
-const CARD_W = Math.round(SCREEN_W * 0.78);
-const CARD_GAP = 14;
-const STRIDE = CARD_W + CARD_GAP;
-const CARD_H = SLIDE_COVER_HEIGHT + 168;
-const SWIPE_THRESHOLD = STRIDE * 0.2;
 const SWIPE_VELOCITY = 420;
+
+function useDeckDimensions() {
+  const { width: SCREEN_W } = useWindowDimensions();
+  const CARD_W = Math.round(SCREEN_W * 0.78);
+  const CARD_GAP = 14;
+  const STRIDE = CARD_W + CARD_GAP;
+  const CARD_H = SLIDE_COVER_HEIGHT + 168;
+  const SWIPE_THRESHOLD = STRIDE * 0.2;
+  return { SCREEN_W, CARD_W, STRIDE, CARD_H, SWIPE_THRESHOLD };
+}
 const TAP_MAX_DISTANCE = 10;
 const PAN_ACTIVE_OFFSET = 10;
 const OPEN_SUPPRESS_MS = 450;
@@ -59,6 +63,8 @@ function CarouselSlot({
   heartBurstFavorited,
   showInteractive = false,
 }: CarouselSlotProps) {
+  const { SCREEN_W, CARD_W, STRIDE, CARD_H } = useDeckDimensions();
+
   const slotStyle = useAnimatedStyle(() => {
     const relIndex = gameIndex - activeIndexSv.value;
     const offsetX = relIndex * STRIDE + translateX.value;
@@ -110,6 +116,7 @@ export default function CatalogSlideDeck({
   igdbClientId,
   emptyComponent,
 }: Props) {
+  const { STRIDE, CARD_H, SWIPE_THRESHOLD } = useDeckDimensions();
   const [heartTrigger, setHeartTrigger] = React.useState(0);
   const [heartBurstFavorited, setHeartBurstFavorited] = React.useState(false);
   const [deckIndex, setDeckIndex] = React.useState(currentIndex);
@@ -360,7 +367,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   sideVeil: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: 18,
     backgroundColor: '#000',
   },

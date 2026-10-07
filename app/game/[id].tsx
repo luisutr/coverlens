@@ -14,6 +14,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useFirstRunTour } from '../../contexts/FirstRunTourContext';
@@ -52,8 +53,6 @@ import { getIgdbImageRequestHeaders } from '../../services/igdbImageRequest';
 import { enqueueCoverThumbCache } from '../../services/storage/coverThumbCache';
 import { formatMoneyMinor, parseMoneyInputToMinor } from '../../services/utils/moneyFormat';
 
-const { width: SCREEN_W } = Dimensions.get('window');
-const COVER_HEIGHT = Math.round(SCREEN_W * 0.55);
 
 const STATUS_COLOR: Record<string, string> = {
   pending: '#aaaaaa',
@@ -80,6 +79,8 @@ type EditForm = {
 };
 
 export default function GameDetailScreen() {
+  const { width: SCREEN_W } = useWindowDimensions();
+  const COVER_HEIGHT = Math.round(SCREEN_W * 0.55);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { refresh: refreshTour } = useFirstRunTour();
@@ -433,7 +434,7 @@ export default function GameDetailScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
 
         {/* CABECERA: portada a pantalla completa de ancho */}
-        <View style={styles.coverWrapper}>
+        <View style={[styles.coverWrapper, { width: SCREEN_W, height: COVER_HEIGHT }]}>
           {headerDisplayUrl ? (
             <Image
               source={
@@ -776,20 +777,18 @@ const styles = StyleSheet.create({
 
   // Cabecera con portada
   coverWrapper: {
-    width: SCREEN_W,
-    height: COVER_HEIGHT,
     backgroundColor: '#111',
     position: 'relative',
   },
   coverImage: { width: '100%', height: '100%' },
   /** Cabecera: posición absoluta para que cover rellene todo el banner. */
-  coverImageFill: StyleSheet.absoluteFillObject,
+  coverImageFill: StyleSheet.absoluteFill,
   coverPlaceholder: {
     flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10,
   },
   coverPlaceholderText: { color: '#333', fontSize: 11, letterSpacing: 1, fontWeight: '700' },
   coverOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.25)',
   },
   backBtn: {

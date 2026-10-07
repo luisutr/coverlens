@@ -49,7 +49,7 @@ export default function HeartBurstOverlay({ trigger, favorited }: Props) {
 
 const styles = StyleSheet.create({
   wrap: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
