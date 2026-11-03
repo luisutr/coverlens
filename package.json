@@ -29,7 +29,6 @@
     "@react-navigation/native": "^7.1.8",
     "babel-plugin-module-resolver": "^5.0.2",
     "expo": "^57.0.21",
-    "expo-build-properties": "^57.0.21",
     "expo-camera": "~57.0.4",
     "expo-clipboard": "~57.0.1",
     "expo-constants": "~57.0.17",
