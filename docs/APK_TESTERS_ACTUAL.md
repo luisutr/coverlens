@@ -2,14 +2,13 @@
 
 > Actualizar el enlace **APK** cuando termine cada build `preview` en EAS.
 
-## APK actual (2026-06-04)
+## APK actual (2026-11-03)
 
 | Campo | Valor |
 |-------|--------|
-| **APK (compartir con amigos)** | https://expo.dev/artifacts/eas/dQC3hTZcehjDT3LtpQNism.apk |
-| **Página del build** | https://expo.dev/accounts/luisutr/projects/coverlens/builds/67f79334-21f9-48ad-8fd0-41e9c308e7ac |
-| **Commit** | `01faaa4` (main) — lote IA, guía usuario, barcode VPS, aviso valores |
-| **Perfil** | `preview` (APK instalable, `versionCode` 3) |
+| **Página del build (seguimiento / descarga APK)** | https://expo.dev/accounts/luisutr/projects/coverlens/builds/cc15ca0c-2991-4e57-b34b-89d5a854d1ad |
+| **Commit** | `7a33e67` (main) — corrección crash post-onboarding (ProGuard disabled, v1.0.5, versionCode 6) |
+| **Perfil** | `preview` (APK instalable directamente en móvil y tablet) |
 | **Caducidad artefacto** | ~14 días desde la fecha del build (política EAS) |
 
 ## Cómo instalar
