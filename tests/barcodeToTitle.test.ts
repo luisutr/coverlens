@@ -26,8 +26,14 @@ describe('barcodeToTitle GameUPC fallback', () => {
       igdbClientId: '',
       igdbClientSecret: '',
       steamGridDbApiKey: '',
-      screenScraperUser: '',
+      screenScraperUsername: '',
       screenScraperPassword: '',
+      screenScraperDevId: '',
+      screenScraperDevPassword: '',
+      priceChartingToken: '',
+      ebayClientId: '',
+      ebayClientSecret: '',
+      ebayMarketplaceId: 'EBAY_ES',
       gameUpcApiKey: '',
     });
   });
@@ -73,8 +79,14 @@ describe('barcodeToTitle GameUPC fallback', () => {
       igdbClientId: '',
       igdbClientSecret: '',
       steamGridDbApiKey: '',
-      screenScraperUser: '',
+      screenScraperUsername: '',
       screenScraperPassword: '',
+      screenScraperDevId: '',
+      screenScraperDevPassword: '',
+      priceChartingToken: '',
+      ebayClientId: '',
+      ebayClientSecret: '',
+      ebayMarketplaceId: 'EBAY_ES',
       gameUpcApiKey: 'user-key-abc',
     });
 

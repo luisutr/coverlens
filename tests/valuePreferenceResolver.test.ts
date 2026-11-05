@@ -34,6 +34,7 @@ const creds: ApiCredentials = {
   ebayClientId: 'ebay-id',
   ebayClientSecret: 'ebay-secret',
   ebayMarketplaceId: 'EBAY_ES',
+  gameUpcApiKey: '',
 };
 
 describe('resolveValueEstimateFromPreferences — orden por defecto', () => {
@@ -54,7 +55,7 @@ describe('resolveValueEstimateFromPreferences — orden por defecto', () => {
       productName: 'X',
       consoleName: 'Y',
     });
-    vi.mocked(medianActiveListingPrice).mockResolvedValue({ cents: 3000, currency: 'EUR' });
+    vi.mocked(medianActiveListingPrice).mockResolvedValue({ cents: 3000, currency: 'EUR', usedQuery: 'Mario 64' });
 
     const r = await resolveValueEstimateFromPreferences({
       title: 'Mario 64',
@@ -95,7 +96,7 @@ describe('resolveValueEstimateFromPreferences — orden por defecto', () => {
 
   it('si GameplayStores y PriceCharting no aportan valor, intenta eBay', async () => {
     vi.mocked(fetchPriceChartingProduct).mockResolvedValue(null);
-    vi.mocked(medianActiveListingPrice).mockResolvedValue({ cents: 4500, currency: 'EUR' });
+    vi.mocked(medianActiveListingPrice).mockResolvedValue({ cents: 4500, currency: 'EUR', usedQuery: 'Rare Game' });
 
     const r = await resolveValueEstimateFromPreferences({
       title: 'Rare Game',
@@ -112,7 +113,7 @@ describe('resolveValueEstimateFromPreferences — orden por defecto', () => {
 
   it('respeta prefs.order: eBay antes que GameplayStores', async () => {
     vi.mocked(resolveRetailPriceFromGameplayStoresSearch).mockResolvedValue({ cents: 100, currency: 'EUR' });
-    vi.mocked(medianActiveListingPrice).mockResolvedValue({ cents: 50, currency: 'EUR' });
+    vi.mocked(medianActiveListingPrice).mockResolvedValue({ cents: 50, currency: 'EUR', usedQuery: 'Test' });
 
     const r = await resolveValueEstimateFromPreferences({
       title: 'Test',

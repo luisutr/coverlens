@@ -96,6 +96,7 @@ describe('resolvePreferredCoverUrl', () => {
     const prefs: CoverSourcePreferences = {
       order: ['gameplaystores', 'steamgriddb', 'igdb', 'screenscraper'],
       enabled: {
+        cholloweb: false,
         gameplaystores: true,
         steamgriddb: true,
         igdb: false,
@@ -112,6 +113,7 @@ describe('resolvePreferredCoverUrl', () => {
     const prefs: CoverSourcePreferences = {
       order: ['steamgriddb', 'gameplaystores', 'igdb', 'screenscraper'],
       enabled: {
+        cholloweb: false,
         gameplaystores: true,
         steamgriddb: true,
         igdb: true,

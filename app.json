@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "coverlens",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "appleTeamId": "N5U2YLNP93",
@@ -32,8 +31,7 @@
       "package": "com.coverlens.app",
       "permissions": [
         "android.permission.CAMERA"
-      ],
-      "versionCode": 6
+      ]
     },
     "web": {
       "output": "static",

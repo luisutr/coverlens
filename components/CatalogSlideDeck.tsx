@@ -16,13 +16,13 @@ import { GameRecord } from '../database/dbConfig';
 import CatalogSlideCard, { SLIDE_COVER_HEIGHT } from './CatalogSlideCard';
 
 const SWIPE_VELOCITY = 420;
+const CARD_H = SLIDE_COVER_HEIGHT + 168;
 
 function useDeckDimensions() {
   const { width: SCREEN_W } = useWindowDimensions();
   const CARD_W = Math.round(SCREEN_W * 0.78);
   const CARD_GAP = 14;
   const STRIDE = CARD_W + CARD_GAP;
-  const CARD_H = SLIDE_COVER_HEIGHT + 168;
   const SWIPE_THRESHOLD = STRIDE * 0.2;
   return { SCREEN_W, CARD_W, STRIDE, CARD_H, SWIPE_THRESHOLD };
 }
