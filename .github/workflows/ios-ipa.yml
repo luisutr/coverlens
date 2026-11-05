@@ -57,18 +57,19 @@ jobs:
           node -e '
             const fs = require("fs");
             let podfile = fs.readFileSync("ios/Podfile", "utf8");
-            const patch = `
-    installer.pods_project.targets.each do |target|
-      target.build_configurations.each do |config|
-        config.build_settings["CODE_SIGNING_ALLOWED"] = "NO"
-        config.build_settings["CODE_SIGNING_REQUIRED"] = "NO"
-        config.build_settings["CODE_SIGN_IDENTITY"] = ""
-        config.build_settings["EXPANDED_CODE_SIGN_IDENTITY"] = ""
-      end
-    end
-  end
-end`;
-            podfile = podfile.replace(/  end\s*end\s*$/, patch);
+            const lines = [
+              "    installer.pods_project.targets.each do |target|",
+              "      target.build_configurations.each do |config|",
+              "        config.build_settings[\"CODE_SIGNING_ALLOWED\"] = \"NO\"",
+              "        config.build_settings[\"CODE_SIGNING_REQUIRED\"] = \"NO\"",
+              "        config.build_settings[\"CODE_SIGN_IDENTITY\"] = \"\"",
+              "        config.build_settings[\"EXPANDED_CODE_SIGN_IDENTITY\"] = \"\"",
+              "      end",
+              "    end",
+              "  end",
+              "end"
+            ].join("\n");
+            podfile = podfile.replace(/  end\s*end\s*$/, lines);
             fs.writeFileSync("ios/Podfile", podfile);
           '
 
