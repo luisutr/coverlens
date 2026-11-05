@@ -1,0 +1,88 @@
+name: Build iOS IPA (AltStore / Sideloadly)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/ios-ipa.yml'
+
+jobs:
+  build-ipa:
+    name: Build Unsigned iOS Release IPA
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install npm dependencies
+        run: npx --yes npm@10.9.3 ci --include=dev
+
+      - name: Verify app assets
+        run: npm run verify:assets
+
+      - name: Expo Prebuild (iOS)
+        env:
+          CI: '1'
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Install CocoaPods
+        working-directory: ios
+        run: pod install
+
+      - name: Build iOS Release (.app) without code signing
+        env:
+          CI: '1'
+          NODE_ENV: 'production'
+        run: |
+          WORKSPACE=$(ls -d ios/*.xcworkspace | head -n 1)
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          echo "Building workspace=$WORKSPACE scheme=$SCHEME"
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath ios/build \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build | xcpretty || xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath ios/build \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package .app into CoverLens.ipa
+        run: |
+          rm -rf Payload CoverLens.ipa
+          mkdir -p Payload
+          cp -R ios/build/Build/Products/Release-iphoneos/*.app Payload/
+          zip -qry CoverLens.ipa Payload
+          ls -lh CoverLens.ipa
+
+      - name: Upload CoverLens.ipa Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CoverLens-iOS-IPA
+          path: CoverLens.ipa
+          retention-days: 14
+          if-no-files-found: error
