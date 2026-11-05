@@ -54,3 +54,10 @@ caratulas/
 _backup/
 Coverlens.code-workspace
 google-play-key.json
+
+# Python / macOS
+__pycache__/
+*.pyc
+._*
+.DS_Store
+
