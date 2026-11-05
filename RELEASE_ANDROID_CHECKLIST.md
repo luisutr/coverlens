@@ -8,13 +8,14 @@
 - [x] Lint/typecheck/tests en verde.
 
 ## 2) Build release
-- [ ] Login EAS: `npx eas login`
-- [ ] Config proyecto: `npx eas init`
-- [ ] Build preview (APK): `npx eas build --platform android --profile preview`
-- [ ] Build producción (AAB): `npx eas build --platform android --profile production`
+- [x] Login EAS: `npx eas login`
+- [x] Config proyecto: `npx eas init`
+- [x] Build preview (APK): `npx eas build --platform android --profile preview`
+- [x] Build producción (AAB): `npx eas build --platform android --profile production --auto-submit` (`c9ebb105-e41d-4218-ba0f-fd146432b135`, v1.0.5, `versionCode` 12)
 
 ## 3) Validación en dispositivo real
-- [ ] Instalación APK preview.
+- [x] Instalación APK y validación por USB (`adb`) en Xiaomi Redmi Note 10 (`M2101K7AG`, 2026-11-05).
+- [x] Corrección verificada del cierre al finalizar el onboarding (`ReferenceError: Property 'CARD_H' doesn't exist` en `components/CatalogSlideDeck.tsx`).
 - [ ] Escaneo barcode (alta, duplicado, no encontrado).
 - [ ] Alta manual / edición / borrado.
 - [ ] Ajustes (guardar credenciales, diagnóstico, reintento metadatos).

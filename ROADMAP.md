@@ -32,34 +32,17 @@
 
 ---
 
-## OCR de portadas — pendiente por hardware
+## Alta en lote por foto (Gemini) y OCR futuro
 
-### Por qué está pausado
-El Mac actual (Intel Core i7, ~2013, macOS 12.7.6) no puede actualizar
-a macOS 13 Ventura, que es el mínimo para Xcode 15+, requerido por RN 0.81.
+### Estado actual (implementado en producción)
+En `app/(tabs)/escaner.tsx` está activo el flujo **Lote IA — Estantería + Gemini**:
+1. Captura/selección de foto de los lomos con `expo-image-picker`.
+2. Copia del prompt estructurado (`constants/shelfBatchPrompt.ts`).
+3. Apertura de Gemini para procesar la foto y devolver el bloque JSON (`formatVersion: 1`, `purpose: "shelf_batch"`).
+4. Importación y previsualización del lote JSON en CoverLens.
 
-### Opciones cuando se tenga hardware compatible
-
-**Opción A — Mac moderno (macOS 13+)**
-1. `npm install @infinitered/react-native-mlkit-text-recognition`
-   (ya está en package.json, solo falta el build nativo)
-2. `rm -rf ios && npx expo run:ios --device`
-3. Configurar firma en Xcode → Settings → Accounts → añadir Apple ID
-4. El código del escáner OCR ya está implementado en `app/(tabs)/escaner.tsx`
-   y el parser en `services/utils/ocrParser.ts`
-
-**Opción B — EAS Build (nube, sin Mac moderno)**
-1. `npm install -g eas-cli && eas login`
-2. `eas build:configure`
-3. `eas build --profile development --platform ios`
-4. Requiere Apple Developer Account ($99/año) para instalar en iPhone real
-5. Sin cuenta: solo simulador iOS (sin cámara real)
-
-**Opción C — Expo Go + OCR.space API (sin build nativo)**
-- API gratuita: 25.000 peticiones/mes con cuenta gratuita
-- Key embebida en el código, usuarios no configuran nada
-- REST puro, funciona en Expo Go
-- Registrar en https://ocr.space y hardcodear la key en el provider
+### OCR nativo (`@infinitered/react-native-mlkit-text-recognition`) — aparcado
+Se retiró la dependencia `@infinitered/react-native-mlkit-text-recognition` de `package.json` al no estar en uso activo y sustituirse por el flujo con Gemini. Se conserva `services/utils/ocrParser.ts` por si en el futuro se retoma OCR directo en dispositivo o vía API.
 
 ---
 
