@@ -18,6 +18,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Select latest Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          LATEST_XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -n 1)
+          echo "Selecting $LATEST_XCODE"
+          sudo xcode-select -s "$LATEST_XCODE/Contents/Developer"
+          xcodebuild -version
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -50,16 +58,17 @@ jobs:
             const fs = require("fs");
             let podfile = fs.readFileSync("ios/Podfile", "utf8");
             const patch = `
-              installer.pods_project.targets.each do |target|
-                target.build_configurations.each do |config|
-                  config.build_settings["CODE_SIGNING_ALLOWED"] = "NO"
-                  config.build_settings["CODE_SIGNING_REQUIRED"] = "NO"
-                  config.build_settings["CODE_SIGN_IDENTITY"] = ""
-                  config.build_settings["EXPANDED_CODE_SIGN_IDENTITY"] = ""
-                end
-              end
-            `;
-            podfile = podfile.replace(/post_install do \|installer\|/, "post_install do |installer|\n" + patch);
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings["CODE_SIGNING_ALLOWED"] = "NO"
+        config.build_settings["CODE_SIGNING_REQUIRED"] = "NO"
+        config.build_settings["CODE_SIGN_IDENTITY"] = ""
+        config.build_settings["EXPANDED_CODE_SIGN_IDENTITY"] = ""
+      end
+    end
+  end
+end`;
+            podfile = podfile.replace(/  end\s*end\s*$/, patch);
             fs.writeFileSync("ios/Podfile", podfile);
           '
 
@@ -72,10 +81,10 @@ jobs:
           CI: '1'
           NODE_ENV: 'production'
         run: |
-          set -eo pipefail
           WORKSPACE=$(ls -d ios/*.xcworkspace | head -n 1)
           SCHEME=$(basename "$WORKSPACE" .xcworkspace)
           echo "Building workspace=$WORKSPACE scheme=$SCHEME"
+          set +e
           xcodebuild \
             -workspace "$WORKSPACE" \
             -scheme "$SCHEME" \
@@ -91,7 +100,19 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_ENTITLEMENTS="" \
             COMPILER_INDEX_STORE_ENABLE=NO \
-            build
+            build > xcodebuild.log 2>&1
+          XC_STATUS=$?
+          if [ $XC_STATUS -ne 0 ]; then
+            echo "xcodebuild failed with exit code $XC_STATUS"
+            grep -E "(error:|fatal error:|❌|Command .* failed|requires a provisioning profile|No profiles|incompatible)" xcodebuild.log | tail -n 15 | while IFS= read -r line; do
+              echo "::error title=XcodeError::$line"
+            done
+            tail -n 60 xcodebuild.log | while IFS= read -r line; do
+              echo "::warning title=XcodeTail::$line"
+            done
+            tail -n 120 xcodebuild.log
+            exit $XC_STATUS
+          fi
 
       - name: Package .app into CoverLens.ipa
         run: |
