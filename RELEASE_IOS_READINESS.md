@@ -11,7 +11,11 @@
 - [ ] App creada en App Store Connect (`CoverLens`).
 - [ ] Certificados/profiles gestionados por EAS o manualmente.
 
-## Build iOS recomendado (sin Mac moderno local)
+## Build iOS para pruebas en iPhone sin cuenta de pago (AltStore / Sideloadly)
+- [x] Workflow en GitHub Actions: `.github/workflows/ios-ipa.yml` (compila `Release` en `macos-15` con `CODE_SIGNING_ALLOWED=NO` y genera el artefacto `CoverLens-iOS-IPA` con `CoverLens.ipa`).
+- [ ] Descargar `CoverLens-iOS-IPA` desde `https://github.com/luisutr/coverlens/actions`, descomprimir `CoverLens.ipa` e instalar en iPhone con **AltStore Classic** (con AltServer en Windows) o **Sideloadly**.
+
+## Build iOS recomendado para tienda (TestFlight / App Store, sin Mac moderno local)
 - [ ] Login EAS: `npx eas login`
 - [ ] Configurar credenciales automáticas: `npx eas credentials`
 - [ ] Build TestFlight: `npx eas build --platform ios --profile production`
