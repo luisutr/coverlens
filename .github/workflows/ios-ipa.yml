@@ -35,6 +35,18 @@ jobs:
       - name: Install npm dependencies
         run: npx --yes npm@10.9.3 ci --include=dev
 
+      - name: Patch RuntimeScheduler.h for Xcode 26 / Swift 6.2 compatibility
+        run: |
+          node -e '
+            const fs = require("fs");
+            const p = "node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI-Cxx/include/RuntimeScheduler.h";
+            if (fs.existsSync(p)) {
+              const src = fs.readFileSync(p, "utf8");
+              fs.writeFileSync(p, src.replace(/SWIFT_RETURNS_RETAINED\s+RuntimeScheduler\(/g, "RuntimeScheduler("));
+              console.log("Patched RuntimeScheduler.h successfully");
+            }
+          '
+
       - name: Verify app assets
         run: npm run verify:assets
 
