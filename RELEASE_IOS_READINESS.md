@@ -13,7 +13,9 @@
 
 ## Build iOS para pruebas en iPhone sin cuenta de pago (AltStore / Sideloadly)
 - [x] Workflow en GitHub Actions: `.github/workflows/ios-ipa.yml` (compila `Release` en `macos-15` con `CODE_SIGNING_ALLOWED=NO` y genera el artefacto `CoverLens-iOS-IPA` con `CoverLens.ipa`).
-- [ ] Descargar `CoverLens-iOS-IPA` desde `https://github.com/luisutr/coverlens/actions`, descomprimir `CoverLens.ipa` e instalar en iPhone con **AltStore Classic** (con AltServer en Windows) o **Sideloadly**.
+- [x] Corrección de compatibilidad con Xcode 26 / Swift 6.2 en CI actualizando `expo-modules-jsi` a `57.1.3`.
+- [x] Generación verificada de `CoverLens.ipa` completa (~21.3 MB) en GitHub Actions (`Run 42088828176`).
+- [ ] Instalación en iPhone con **AltStore Classic** (con AltServer y iTunes ejecutándose en Windows con cable USB) o **Sideloadly**.
 
 ## Build iOS recomendado para tienda (TestFlight / App Store, sin Mac moderno local)
 - [ ] Login EAS: `npx eas login`
